@@ -576,6 +576,8 @@ def process_excel_tables_with_debug(tables, debug_print):
         import pandas as pd
         debug_print(f"🔍 Iniciando processamento de {len(tables)} tabelas")
         
+        total_bou_found = 0
+        
         for i, table in enumerate(tables):
             debug_print(f"📊 Processando tabela {i+1}/{len(tables)}")
             
@@ -593,6 +595,15 @@ def process_excel_tables_with_debug(tables, debug_print):
             
             debug_print(f"📋 Colunas da tabela: {list(table.columns)}")
             debug_print(f"📏 Dimensões: {table.shape}")
+            
+            # Contar quantos BOU existem nesta tabela
+            bou_count = 0
+            for idx, row in table.iterrows():
+                for col in table.columns:
+                    if pd.notna(row[col]) and '2025/' in str(row[col]):
+                        bou_count += 1
+                        break
+            debug_print(f"🔢 BOU encontrados nesta tabela: {bou_count}")
             
             # Procurar coluna com BOU
             bou_column = None
@@ -656,7 +667,8 @@ def process_excel_tables_with_debug(tables, debug_print):
                         
                         # Se já temos um BOU anterior, salvar ele
                         if current_bou and current_ocorrencia:
-                            debug_print(f"🔍 BOU: {current_bou}")
+                            total_bou_found += 1
+                            debug_print(f"🔍 BOU #{total_bou_found}: {current_bou}")
                             debug_print(f"📋 Natureza: {current_ocorrencia.get('natureza', 'N/A')[:50]}...")
                             debug_print(f"📍 Endereço: {current_ocorrencia.get('endereco', 'N/A')[:50]}...")
                             debug_print(f"📅 Data: {current_ocorrencia.get('data_geracao', 'N/A')}")
@@ -733,7 +745,8 @@ def process_excel_tables_with_debug(tables, debug_print):
             
             # Salvar o último BOU se existir
             if current_bou and current_ocorrencia:
-                debug_print(f"🔍 BOU: {current_bou}")
+                total_bou_found += 1
+                debug_print(f"🔍 BOU #{total_bou_found}: {current_bou}")
                 debug_print(f"📋 Natureza: {current_ocorrencia.get('natureza', 'N/A')[:50]}...")
                 debug_print(f"📍 Endereço: {current_ocorrencia.get('endereco', 'N/A')[:50]}...")
                 debug_print(f"📅 Data: {current_ocorrencia.get('data_geracao', 'N/A')}")
@@ -741,6 +754,9 @@ def process_excel_tables_with_debug(tables, debug_print):
                 debug_print("---")
                 
                 ocorrencias.append(current_ocorrencia)
+        
+        debug_print(f"🎯 TOTAL DE BOU PROCESSADOS: {total_bou_found}")
+        debug_print(f"📊 TOTAL DE OCORRÊNCIAS FINAIS: {len(ocorrencias)}")
         
         return ocorrencias
         
