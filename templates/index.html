@@ -1,0 +1,1930 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analisador de Ocorrências Policiais - 34°BPM</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #0f172a;
+            --secondary-color: #1e293b;
+            --accent-color: #3b82f6;
+            --accent-hover: #2563eb;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --info-color: #06b6d4;
+            --text-primary: #f8fafc;
+            --text-secondary: #cbd5e1;
+            --text-muted: #94a3b8;
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --border-color: #475569;
+            --shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            --shadow-lg: 0 35px 60px -12px rgba(0, 0, 0, 0.35);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            background-image: 
+                radial-gradient(circle at 20% 80%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(16, 185, 129, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(245, 158, 11, 0.05) 0%, transparent 50%);
+            min-height: 100vh;
+            padding: 20px;
+            color: var(--text-primary);
+            overflow-x: hidden;
+        }
+
+        /* Animações globais */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); }
+            50% { box-shadow: 0 0 30px rgba(59, 130, 246, 0.6); }
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        @keyframes pulseRed {
+            0%, 100% { 
+                transform: scale(1);
+                box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+            }
+            50% { 
+                transform: scale(1.05);
+                box-shadow: 0 6px 25px rgba(239, 68, 68, 0.6);
+            }
+        }
+
+        @keyframes pulseOrange {
+            0%, 100% { 
+                transform: scale(1);
+                box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+            }
+            50% { 
+                transform: scale(1.03);
+                box-shadow: 0 5px 20px rgba(245, 158, 11, 0.5);
+            }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); }
+            20%, 40%, 60%, 80% { transform: translateX(2px); }
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-8px); }
+            60% { transform: translateY(-4px); }
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes slideInLeft {
+            from { transform: translateX(-100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes slideInUp {
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        @keyframes zoomIn {
+            from { transform: scale(0); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        @keyframes fadeInScale {
+            from { 
+                opacity: 0; 
+                transform: scale(0.8); 
+            }
+            to { 
+                opacity: 1; 
+                transform: scale(1); 
+            }
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: var(--bg-secondary);
+            border-radius: 24px;
+            box-shadow: var(--shadow-lg);
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            animation: fadeInUp 0.8s ease-out;
+            backdrop-filter: blur(20px);
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: var(--text-primary);
+            padding: 40px 30px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, transparent 30%, rgba(59, 130, 246, 0.1) 50%, transparent 70%);
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .header h1 {
+            font-size: 3em;
+            margin-bottom: 15px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-color), var(--success-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            position: relative;
+            z-index: 1;
+            animation: fadeInUp 1s ease-out 0.2s both;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+            color: var(--text-secondary);
+            position: relative;
+            z-index: 1;
+            animation: fadeInUp 1s ease-out 0.4s both;
+        }
+
+        .header-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+            animation: float 3s ease-in-out infinite;
+            position: relative;
+            z-index: 1;
+        }
+
+        .content {
+            padding: 40px;
+            background: var(--bg-secondary);
+        }
+
+        .section {
+            margin-bottom: 40px;
+            padding: 30px;
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            background: var(--bg-tertiary);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        .section:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow);
+            border-color: var(--accent-color);
+        }
+
+        .section h2 {
+            color: var(--text-primary);
+            margin-bottom: 25px;
+            font-size: 1.8em;
+            font-weight: 600;
+            border-bottom: 2px solid var(--accent-color);
+            padding-bottom: 15px;
+            position: relative;
+        }
+
+        .section h2::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 50px;
+            height: 2px;
+            background: var(--success-color);
+            animation: slideInRight 0.8s ease-out 0.5s both;
+        }
+
+        .terms-config {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+        }
+
+        .term-group {
+            background: var(--bg-secondary);
+            padding: 25px;
+            border-radius: 16px;
+            border-left: 4px solid;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .term-group::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, transparent 0%, rgba(255, 255, 255, 0.05) 100%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .term-group:hover::before {
+            opacity: 1;
+        }
+
+        .term-group:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow);
+        }
+
+        .term-group.alta {
+            border-left-color: var(--danger-color);
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(239, 68, 68, 0.1) 100%);
+        }
+
+        .term-group.media {
+            border-left-color: var(--warning-color);
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(245, 158, 11, 0.1) 100%);
+        }
+
+        .term-group.baixa {
+            border-left-color: var(--info-color);
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(6, 182, 212, 0.1) 100%);
+        }
+
+        .term-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--text-primary);
+            font-size: 1.1em;
+            position: relative;
+            z-index: 1;
+        }
+
+        .term-group textarea {
+            width: 100%;
+            height: 120px;
+            padding: 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            font-family: inherit;
+            resize: vertical;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 1;
+        }
+
+        .term-group textarea:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .term-group textarea::placeholder {
+            color: var(--text-muted);
+        }
+
+        .upload-section {
+            text-align: center;
+            background: var(--bg-secondary);
+            padding: 40px;
+            border-radius: 20px;
+            border: 2px dashed var(--accent-color);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .upload-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, transparent 30%, rgba(59, 130, 246, 0.05) 50%, transparent 70%);
+            animation: float 8s ease-in-out infinite;
+        }
+
+        .upload-section:hover {
+            border-color: var(--success-color);
+            transform: translateY(-3px);
+            box-shadow: var(--shadow);
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            margin: 25px 0;
+        }
+
+        .file-input {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .file-input-button {
+            display: inline-block;
+            padding: 18px 40px;
+            background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-hover) 100%);
+            color: white;
+            border-radius: 16px;
+            cursor: pointer;
+            font-size: 1.2em;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
+        }
+
+        .file-input-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .file-input-button:hover::before {
+            left: 100%;
+        }
+
+        .file-input-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 35px rgba(59, 130, 246, 0.4);
+        }
+
+        .analyze-button {
+            background: linear-gradient(135deg, var(--success-color) 0%, #059669 100%);
+            color: white;
+            border: none;
+            padding: 18px 45px;
+            border-radius: 16px;
+            font-size: 1.3em;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 25px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
+        }
+
+        .analyze-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .analyze-button:hover::before {
+            left: 100%;
+        }
+
+        .analyze-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 35px rgba(16, 185, 129, 0.4);
+        }
+
+        .analyze-button:disabled {
+            background: var(--bg-tertiary);
+            color: var(--text-muted);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 30px 0;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .spinner {
+            border: 4px solid var(--bg-tertiary);
+            border-top: 4px solid var(--accent-color);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+            position: relative;
+        }
+
+        .spinner::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--bg-tertiary);
+            border-top: 2px solid var(--success-color);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            animation: spin 0.8s linear infinite reverse;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading p {
+            color: var(--text-secondary);
+            font-size: 1.1em;
+            font-weight: 500;
+        }
+
+        .results-section {
+            display: none;
+        }
+
+        .ocorrencia-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            margin-bottom: 20px;
+            padding: 25px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            animation: slideInLeft 0.8s ease-out;
+        }
+
+        .ocorrencia-card:nth-child(1) { animation-delay: 0.1s; }
+        .ocorrencia-card:nth-child(2) { animation-delay: 0.2s; }
+        .ocorrencia-card:nth-child(3) { animation-delay: 0.3s; }
+        .ocorrencia-card:nth-child(4) { animation-delay: 0.4s; }
+        .ocorrencia-card:nth-child(5) { animation-delay: 0.5s; }
+        .ocorrencia-card:nth-child(6) { animation-delay: 0.6s; }
+
+        .ocorrencia-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, transparent 0%, rgba(59, 130, 246, 0.03) 100%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 0;
+        }
+
+        .ocorrencia-card:hover::before {
+            opacity: 1;
+        }
+
+        .ocorrencia-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow);
+            border-color: var(--accent-color);
+        }
+
+        .ocorrencia-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .ocorrencia-info {
+            flex: 1;
+            position: relative;
+            z-index: 1;
+        }
+
+        .ocorrencia-bou {
+            font-weight: 700;
+            font-size: 1.3em;
+            color: var(--accent-color);
+            margin-bottom: 8px;
+        }
+
+        .ocorrencia-natureza {
+            color: var(--text-primary);
+            margin: 8px 0;
+            font-weight: 500;
+            font-size: 1.1em;
+        }
+
+        .ocorrencia-endereco {
+            color: var(--text-secondary);
+            font-size: 0.95em;
+            margin: 5px 0;
+        }
+
+        .ocorrencia-data {
+            color: var(--text-muted);
+            font-size: 0.9em;
+            margin: 5px 0;
+        }
+
+        .ocorrencia-descricao {
+            color: var(--text-muted);
+            font-size: 0.9em;
+            font-style: italic;
+            margin-top: 8px;
+            padding: 8px;
+            background: var(--bg-primary);
+            border-radius: 8px;
+            border-left: 3px solid var(--accent-color);
+        }
+
+        .relevancia-tag {
+            padding: 8px 16px;
+            border-radius: 25px;
+            font-weight: 600;
+            font-size: 0.85em;
+            margin-left: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .relevancia-tag:hover {
+            transform: scale(1.05);
+        }
+
+        .relevancia-alta {
+            background: linear-gradient(135deg, var(--danger-color), #dc2626);
+            color: white;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+            animation: pulseRed 2s infinite;
+        }
+
+        .relevancia-media {
+            background: linear-gradient(135deg, var(--warning-color), #d97706);
+            color: white;
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+            animation: pulseOrange 3s infinite;
+        }
+
+        .relevancia-baixa {
+            background: linear-gradient(135deg, var(--info-color), #0891b2);
+            color: white;
+            box-shadow: 0 4px 15px rgba(6, 182, 212, 0.3);
+            animation: float 4s ease-in-out infinite;
+        }
+
+        .relevancia-nenhuma {
+            background: linear-gradient(135deg, var(--bg-tertiary), #64748b);
+            color: var(--text-muted);
+            box-shadow: 0 4px 15px rgba(100, 116, 139, 0.2);
+        }
+
+        .select-button {
+            background: linear-gradient(135deg, var(--bg-tertiary), #64748b);
+            color: var(--text-primary);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            position: relative;
+            z-index: 10;
+            animation: fadeInScale 0.5s ease-out;
+        }
+
+        .select-button:hover {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+            animation: bounce 0.6s ease;
+        }
+
+        .select-button.selected {
+            background: linear-gradient(135deg, var(--success-color), #059669);
+            color: white;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+            animation: pulse 2s infinite, bounce 0.6s ease;
+        }
+
+        .ocorrencia-actions {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .relato-expandable {
+            margin-top: 20px;
+            padding: 20px;
+            background: var(--bg-primary);
+            border-radius: 12px;
+            border-left: 4px solid var(--accent-color);
+            transition: all 0.3s ease;
+        }
+
+        .relato-toggle {
+            background: none;
+            border: none;
+            color: var(--accent-color);
+            cursor: pointer;
+            font-weight: 600;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+            transition: all 0.3s ease;
+            padding: 8px 0;
+            position: relative;
+            z-index: 1;
+        }
+
+        .relato-toggle:hover {
+            color: var(--success-color);
+            transform: translateX(5px) scale(1.05);
+            animation: shake 0.5s ease;
+        }
+
+        .relato-content {
+            display: none;
+            line-height: 1.7;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .relato-content.expanded {
+            display: block;
+        }
+
+        .debug-info {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 15px;
+            margin: 15px 0;
+            font-size: 0.9em;
+            color: var(--text-muted);
+            transition: all 0.3s ease;
+        }
+
+        .debug-info:hover {
+            border-color: var(--accent-color);
+        }
+
+        .debug-toggle {
+            background: linear-gradient(135deg, var(--bg-tertiary), #64748b);
+            color: var(--text-primary);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85em;
+            font-weight: 500;
+            margin: 8px 0;
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 1;
+        }
+
+        .debug-toggle:hover {
+            background: linear-gradient(135deg, var(--accent-color), var(--accent-hover));
+            color: white;
+            transform: translateY(-1px) scale(1.05);
+            animation: bounce 0.6s ease;
+        }
+
+        .debug-content {
+            display: none;
+            margin-top: 15px;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .debug-content.expanded {
+            display: block;
+        }
+
+        .field-label {
+            font-weight: 600;
+            color: var(--accent-color);
+            margin-right: 8px;
+        }
+
+        .field-value {
+            color: var(--text-primary);
+        }
+
+        .relato-highlighted {
+            line-height: 1.7;
+            padding: 15px;
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            border-left: 4px solid var(--accent-color);
+            color: var(--text-primary);
+            font-size: 0.95em;
+        }
+
+        .termo-alta {
+            background: linear-gradient(135deg, var(--danger-color), #dc2626);
+            color: white;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+            transition: all 0.3s ease;
+            animation: pulseRed 2s infinite;
+        }
+
+        .termo-alta:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+            animation: shake 0.5s ease;
+        }
+
+        .termo-media {
+            background: linear-gradient(135deg, var(--warning-color), #d97706);
+            color: white;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+            transition: all 0.3s ease;
+            animation: pulseOrange 3s infinite;
+        }
+
+        .termo-media:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+            animation: bounce 0.6s ease;
+        }
+
+        .termo-baixa {
+            background: linear-gradient(135deg, var(--info-color), #0891b2);
+            color: white;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(6, 182, 212, 0.3);
+            transition: all 0.3s ease;
+            animation: float 4s ease-in-out infinite;
+        }
+
+        .termo-baixa:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(6, 182, 212, 0.4);
+            animation: rotate 0.8s ease;
+        }
+
+        .generate-section {
+            text-align: center;
+            background: var(--bg-secondary);
+            padding: 40px;
+            border-radius: 20px;
+            border: 2px solid var(--success-color);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .generate-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, transparent 30%, rgba(16, 185, 129, 0.05) 50%, transparent 70%);
+            animation: float 10s ease-in-out infinite;
+            z-index: 0;
+        }
+
+        .generate-section > * {
+            position: relative;
+            z-index: 1;
+        }
+
+        .copy-button {
+            background: linear-gradient(135deg, var(--accent-color), var(--accent-hover));
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1em;
+            margin-top: 20px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+            position: relative;
+            z-index: 10;
+        }
+
+        .copy-button:hover {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+            animation: bounce 0.6s ease;
+        }
+
+        .generate-button {
+            background: linear-gradient(135deg, var(--success-color) 0%, #059669 100%);
+            color: white;
+            border: none;
+            padding: 18px 45px;
+            border-radius: 16px;
+            font-size: 1.3em;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 25px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
+            z-index: 10;
+        }
+
+        .generate-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .generate-button:hover::before {
+            left: 100%;
+        }
+
+        .generate-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 35px rgba(16, 185, 129, 0.4);
+        }
+
+        .generate-button:disabled {
+            background: var(--bg-tertiary);
+            color: var(--text-muted);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .report-output {
+            width: 100%;
+            height: 350px;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
+            font-size: 0.95em;
+            resize: vertical;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+        }
+
+        .report-output:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            padding: 25px;
+            border-radius: 16px;
+            text-align: center;
+            border-left: 4px solid var(--accent-color);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            animation: slideInUp 0.8s ease-out;
+        }
+
+        .stat-card:nth-child(1) { animation-delay: 0.1s; }
+        .stat-card:nth-child(2) { animation-delay: 0.2s; }
+        .stat-card:nth-child(3) { animation-delay: 0.3s; }
+        .stat-card:nth-child(4) { animation-delay: 0.4s; }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, transparent 0%, rgba(59, 130, 246, 0.05) 100%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .stat-card:hover::before {
+            opacity: 1;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: var(--shadow);
+            animation: bounce 0.6s ease;
+        }
+
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: 700;
+            color: var(--accent-color);
+            margin-bottom: 8px;
+            position: relative;
+            z-index: 1;
+            animation: zoomIn 1s ease-out;
+        }
+
+        .stat-card:hover .stat-number {
+            animation: pulse 1s ease;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            margin-top: 8px;
+            font-weight: 500;
+            position: relative;
+            z-index: 1;
+        }
+
+        .error {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.05));
+            color: var(--danger-color);
+            padding: 20px;
+            border-radius: 12px;
+            margin: 25px 0;
+            border: 1px solid var(--danger-color);
+            border-left: 4px solid var(--danger-color);
+            animation: fadeInUp 0.5s ease-out;
+        }
+
+        .success {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(5, 150, 105, 0.05));
+            color: var(--success-color);
+            padding: 20px;
+            border-radius: 12px;
+            margin: 25px 0;
+            border: 1px solid var(--success-color);
+            border-left: 4px solid var(--success-color);
+            animation: fadeInUp 0.5s ease-out;
+        }
+
+        .warning {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(217, 119, 6, 0.05));
+            color: var(--warning-color);
+            padding: 20px;
+            border-radius: 12px;
+            margin: 25px 0;
+            border: 1px solid var(--warning-color);
+            border-left: 4px solid var(--warning-color);
+            animation: fadeInUp 0.5s ease-out;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                padding: 20px;
+                border-radius: 16px;
+            }
+
+            .header {
+                padding: 30px 20px;
+                text-align: center;
+            }
+
+            .header h1 {
+                font-size: 2.2em;
+                margin-bottom: 10px;
+            }
+
+            .header p {
+                font-size: 1.1em;
+            }
+
+            .section {
+                margin: 20px 0;
+                padding: 25px 20px;
+            }
+
+            .section h2 {
+                font-size: 1.4em;
+                margin-bottom: 20px;
+            }
+
+            .terms-config {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+
+            .term-group {
+                padding: 20px 15px;
+            }
+
+            .term-group h3 {
+                font-size: 1.1em;
+                margin-bottom: 15px;
+            }
+
+            textarea {
+                font-size: 14px;
+                padding: 12px;
+                min-height: 80px;
+            }
+
+            .upload-section {
+                padding: 30px 20px;
+                text-align: center;
+            }
+
+            .file-input-button, .analyze-button {
+                padding: 15px 25px;
+                font-size: 1.1em;
+                width: 100%;
+                margin: 10px 0;
+            }
+
+            .ocorrencia-card {
+                padding: 20px 15px;
+                margin-bottom: 15px;
+            }
+
+            .ocorrencia-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+
+            .ocorrencia-bou {
+                font-size: 1.2em;
+            }
+
+            .ocorrencia-natureza {
+                font-size: 1em;
+            }
+
+            .ocorrencia-endereco, .ocorrencia-data {
+                font-size: 0.9em;
+            }
+
+            .ocorrencia-descricao {
+                font-size: 0.85em;
+                padding: 10px;
+            }
+
+            .relevancia-tag {
+                padding: 6px 12px;
+                font-size: 0.8em;
+                margin-left: 0;
+                margin-top: 10px;
+                margin-bottom: 10px;
+                display: block;
+                width: fit-content;
+            }
+
+            .select-button {
+                padding: 10px 20px;
+                font-size: 0.85em;
+                width: 100%;
+                margin-top: 10px;
+            }
+
+            .ocorrencia-actions {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+                width: 100%;
+                margin-top: 15px;
+            }
+
+            .ocorrencia-actions .select-button {
+                order: 2;
+            }
+
+            .ocorrencia-actions .relevancia-tag {
+                order: 1;
+                align-self: flex-start;
+            }
+
+            .relato-toggle {
+                font-size: 1em;
+                padding: 10px 0;
+            }
+
+            .relato-content {
+                font-size: 0.9em;
+                line-height: 1.6;
+            }
+
+            .generate-section {
+                padding: 30px 20px;
+            }
+
+            .generate-button {
+                padding: 15px 30px;
+                font-size: 1.2em;
+                width: 100%;
+            }
+
+            .report-output {
+                height: 300px;
+                font-size: 14px;
+                padding: 15px;
+            }
+
+            .copy-button {
+                padding: 12px 20px;
+                font-size: 0.9em;
+                width: 100%;
+            }
+
+            .stats {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 15px;
+            }
+
+            .stat-card {
+                padding: 20px 15px;
+            }
+
+            .stat-number {
+                font-size: 2em;
+            }
+
+            .stat-label {
+                font-size: 0.9em;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                margin: 5px;
+                padding: 15px;
+            }
+
+            .header {
+                padding: 20px 15px;
+            }
+
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .section {
+                padding: 20px 15px;
+            }
+
+            .ocorrencia-card {
+                padding: 15px 12px;
+            }
+
+            .stats {
+                grid-template-columns: 1fr;
+            }
+
+            .termo-alta, .termo-media, .termo-baixa {
+                font-size: 0.8em;
+                padding: 2px 6px;
+            }
+
+            .ocorrencia-actions {
+                margin-top: 10px;
+            }
+
+            .relevancia-tag {
+                margin-bottom: 8px;
+            }
+        }
+
+        /* ===== MODAL PARA MOBILE ===== */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .modal-content {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--bg-secondary);
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 95%;
+            width: 90%;
+            min-width: 600px;
+            max-height: 85%;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            animation: zoomIn 0.3s ease-out;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .modal-title {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: var(--accent-color);
+            margin: 0;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5em;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+            width: 35px;
+            height: 35px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-close:hover {
+            background: var(--danger-color);
+            color: white;
+            transform: scale(1.1);
+        }
+
+        .modal-body {
+            line-height: 1.8;
+            color: var(--text-primary);
+            font-size: 1.05em;
+            text-align: justify;
+            word-spacing: 0.1em;
+        }
+
+        .modal-body .termo-alta,
+        .modal-body .termo-media,
+        .modal-body .termo-baixa {
+            font-size: 0.9em;
+            padding: 3px 8px;
+            margin: 2px;
+            display: inline-block;
+        }
+
+        @media (max-width: 1024px) {
+            .modal-content {
+                width: 85%;
+                min-width: 500px;
+                max-width: 90%;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .modal-content {
+                padding: 25px 20px;
+                width: 95%;
+                min-width: 300px;
+                max-width: 95%;
+                max-height: 85%;
+            }
+
+            .modal-title {
+                font-size: 1.2em;
+            }
+
+            .modal-body {
+                font-size: 0.95em;
+                line-height: 1.6;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .modal-content {
+                padding: 20px 15px;
+                width: 98%;
+                min-width: 280px;
+                max-width: 98%;
+                max-height: 90%;
+            }
+
+            .modal-title {
+                font-size: 1.1em;
+            }
+
+            .modal-body {
+                font-size: 0.9em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-icon">
+                <img src="p2.png" alt="Logo" style="width: 60px; height: 60px; object-fit: contain;">
+            </div>
+            <h1>IntelliOps - Sistema de Análise Inteligente</h1>
+            <p>Plataforma Avançada de Processamento de Ocorrências</p>
+        </div>
+
+        <div class="content">
+            <!-- Seção de Configuração -->
+            <div class="section">
+                <h2>🔧 Configuração de Termos de Relevância</h2>
+                <div class="terms-config">
+                    <div class="term-group alta">
+                        <label for="terms-alta">Termos de Relevância ALTA</label>
+                        <textarea id="terms-alta" placeholder="Digite os termos separados por vírgula...">Arma, Armamento, Pistola, Tiro, Disparo, Fogo, Homicídio, Óbito, Incêndio</textarea>
+                    </div>
+                    <div class="term-group media">
+                        <label for="terms-media">Termos de Relevância MÉDIA</label>
+                        <textarea id="terms-media" placeholder="Digite os termos separados por vírgula...">Prisão, Tráfico, Droga</textarea>
+                    </div>
+                    <div class="term-group baixa">
+                        <label for="terms-baixa">Termos de Relevância BAIXA</label>
+                        <textarea id="terms-baixa" placeholder="Digite os termos separados por vírgula...">Ameaça, Agressão, Agrediu</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Seção de Análise -->
+            <div class="section">
+                <h2>📊 Análise de Ocorrências</h2>
+                <div class="upload-section">
+                    <div class="file-input-wrapper">
+                        <input type="file" id="pdf-file" class="file-input" accept=".pdf">
+                        <label for="pdf-file" class="file-input-button">
+                            📄 Selecionar PDF
+                        </label>
+                    </div>
+                    <p id="file-name" style="margin-top: 10px; color: #666;"></p>
+                    <button id="analyze-btn" class="analyze-button" disabled>
+                        🔍 Analisar Ocorrências
+                    </button>
+                </div>
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p>Analisando ocorrências...</p>
+                </div>
+            </div>
+
+            <!-- Seção de Resultados -->
+            <div class="section results-section" id="results-section">
+                <h2>📈 Resultados da Análise</h2>
+                <div class="stats" id="stats">
+                    <!-- Estatísticas serão inseridas aqui -->
+                </div>
+                
+                <!-- Legenda dos Termos -->
+                <div style="background: var(--bg-secondary); padding: 20px; border-radius: 16px; margin-bottom: 25px; border: 1px solid var(--border-color);">
+                    <h4 style="margin-bottom: 15px; color: var(--text-primary); font-weight: 600; font-size: 1.1em;">🎨 Legenda dos Termos Destacados:</h4>
+                    <div style="display: flex; gap: 25px; flex-wrap: wrap;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="termo-alta">ALTA</span>
+                            <span style="font-size: 0.95em; color: var(--text-secondary); font-weight: 500;">Relevância Alta</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="termo-media">MÉDIA</span>
+                            <span style="font-size: 0.95em; color: var(--text-secondary); font-weight: 500;">Relevância Média</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="termo-baixa">BAIXA</span>
+                            <span style="font-size: 0.95em; color: var(--text-secondary); font-weight: 500;">Relevância Baixa</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="ocorrencias-list">
+                    <!-- Lista de ocorrências será inserida aqui -->
+                </div>
+            </div>
+
+            <!-- Seção de Geração de Relatório -->
+            <div class="section generate-section" id="generate-section" style="display: none;">
+                <h2>💬 Gerar Relatório para WhatsApp</h2>
+                <button id="generate-btn" class="generate-button" disabled>
+                    📤 Gerar Mensagem
+                </button>
+                <div id="report-container" style="display: none; position: relative; z-index: 1;">
+                    <label for="report-output">Relatório formatado:</label>
+                    <textarea id="report-output" class="report-output" readonly placeholder="O relatório aparecerá aqui..." style="position: relative; z-index: 1;"></textarea>
+                    <button onclick="copyToClipboard()" class="copy-button" style="margin-top: 15px; padding: 12px 25px; background: linear-gradient(135deg, var(--accent-color), var(--accent-hover)); color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: 600; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3); position: relative; z-index: 10;">
+                        📋 Copiar para Área de Transferência
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Visualizar Relato no Mobile -->
+    <div id="relato-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">📋 Relato Policial</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-relato-content">
+                <!-- Conteúdo do relato será inserido aqui -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentOcorrencias = [];
+        let selectedOcorrencias = [];
+
+        // Elementos DOM
+        const fileInput = document.getElementById('pdf-file');
+        const fileName = document.getElementById('file-name');
+        const analyzeBtn = document.getElementById('analyze-btn');
+        const loading = document.getElementById('loading');
+        const resultsSection = document.getElementById('results-section');
+        const generateSection = document.getElementById('generate-section');
+        const generateBtn = document.getElementById('generate-btn');
+        const reportContainer = document.getElementById('report-container');
+        const reportOutput = document.getElementById('report-output');
+
+        // Event listeners
+        fileInput.addEventListener('change', handleFileSelect);
+        analyzeBtn.addEventListener('click', analyzePDF);
+        generateBtn.addEventListener('click', generateReport);
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                fileName.textContent = `Arquivo selecionado: ${file.name}`;
+                analyzeBtn.disabled = false;
+            } else {
+                fileName.textContent = '';
+                analyzeBtn.disabled = true;
+            }
+        }
+
+        function getTermsConfig() {
+            return {
+                alta: document.getElementById('terms-alta').value.split(',').map(t => t.trim()).filter(t => t),
+                media: document.getElementById('terms-media').value.split(',').map(t => t.trim()).filter(t => t),
+                baixa: document.getElementById('terms-baixa').value.split(',').map(t => t.trim()).filter(t => t)
+            };
+        }
+
+        async function analyzePDF() {
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('terms', JSON.stringify(getTermsConfig()));
+
+            loading.style.display = 'block';
+            analyzeBtn.disabled = true;
+
+            try {
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    currentOcorrencias = data.ocorrencias;
+                    selectedOcorrencias = [];
+                    displayResults(data.ocorrencias);
+                    resultsSection.style.display = 'block';
+                    generateSection.style.display = 'block';
+                    
+                    // Mostrar informações sobre arquivo Excel se disponível
+                    if (data.excel_file) {
+                        showExcelInfo(data.excel_file);
+                    }
+                } else {
+                    showError(data.error);
+                }
+            } catch (error) {
+                showError('Erro ao analisar o arquivo: ' + error.message);
+            } finally {
+                loading.style.display = 'none';
+                analyzeBtn.disabled = false;
+            }
+        }
+
+        function displayResults(ocorrencias) {
+            // Estatísticas
+            const stats = {
+                total: ocorrencias.length,
+                alta: ocorrencias.filter(o => o.relevancia === 'ALTA').length,
+                media: ocorrencias.filter(o => o.relevancia === 'MÉDIA').length,
+                baixa: ocorrencias.filter(o => o.relevancia === 'BAIXA').length,
+                nenhuma: ocorrencias.filter(o => o.relevancia === 'NENHUMA').length
+            };
+
+            document.getElementById('stats').innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-number">${stats.total}</div>
+                    <div class="stat-label">Total</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" style="color: #dc3545;">${stats.alta}</div>
+                    <div class="stat-label">Alta Relevância</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" style="color: #ffc107;">${stats.media}</div>
+                    <div class="stat-label">Média Relevância</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" style="color: #17a2b8;">${stats.baixa}</div>
+                    <div class="stat-label">Baixa Relevância</div>
+                </div>
+            `;
+
+            // Lista de ocorrências
+            const listContainer = document.getElementById('ocorrencias-list');
+            listContainer.innerHTML = '';
+
+            ocorrencias.forEach((oc, index) => {
+                const card = document.createElement('div');
+                card.className = 'ocorrencia-card';
+                card.innerHTML = `
+                    <div class="ocorrencia-header">
+                        <div class="ocorrencia-info">
+                            <div class="ocorrencia-bou">${oc.bou || 'N/A'}</div>
+                            <div class="ocorrencia-natureza">${oc.natureza || 'N/A'}</div>
+                            <div class="ocorrencia-endereco">${oc.endereco || 'N/A'}</div>
+                            <div class="ocorrencia-data">${oc.data_geracao || 'N/A'}</div>
+                            ${oc.descricao ? `<div class="ocorrencia-descricao">${oc.descricao}</div>` : ''}
+                        </div>
+                        <div class="ocorrencia-actions">
+                            <span class="relevancia-tag relevancia-${oc.relevancia.toLowerCase().replace('é', 'e')}">${oc.relevancia}</span>
+                            <button class="select-button" onclick="toggleSelection(${index})" id="btn-${index}">
+                                RELEVANTE
+                            </button>
+                        </div>
+                    </div>
+                    <div class="relato-expandable">
+                        <button class="relato-toggle" onclick="toggleRelato(this, '${oc.bou}')">
+                            📄 Ver Relato Policial
+                        </button>
+                        <div class="relato-content" id="relato-${index}">
+                            <div class="relato-highlighted">
+                                ${highlightTerms(oc.relato || 'Relato não disponível', oc.terms_found || {})}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="debug-info" style="display: none;">
+                        <button class="debug-toggle" onclick="toggleDebug(${index})">
+                            🔍 Ver Dados Extraídos
+                        </button>
+                        <div class="debug-content" id="debug-${index}">
+                            <div><span class="field-label">BOU:</span><span class="field-value">"${oc.bou || ''}"</span></div>
+                            <div><span class="field-label">Descrição:</span><span class="field-value">"${oc.descricao || ''}"</span></div>
+                            <div><span class="field-label">Natureza:</span><span class="field-value">"${oc.natureza || ''}"</span></div>
+                            <div><span class="field-label">Endereço:</span><span class="field-value">"${oc.endereco || ''}"</span></div>
+                            <div><span class="field-label">Data:</span><span class="field-value">"${oc.data_geracao || ''}"</span></div>
+                            <div><span class="field-label">Relato:</span><span class="field-value">"${(oc.relato || '').substring(0, 100)}${(oc.relato || '').length > 100 ? '...' : ''}"</span></div>
+                            <div><span class="field-label">Termos encontrados:</span><span class="field-value">Alta: ${oc.count_alto || 0}, Média: ${oc.count_medio || 0}, Baixa: ${oc.count_baixo || 0}</span></div>
+                        </div>
+                    </div>
+                `;
+                listContainer.appendChild(card);
+            });
+        }
+
+        function toggleSelection(index) {
+            const button = document.getElementById(`btn-${index}`);
+            const ocorrencia = currentOcorrencias[index];
+            
+            if (ocorrencia.selecionada) {
+                ocorrencia.selecionada = false;
+                button.textContent = 'RELEVANTE';
+                button.classList.remove('selected');
+                selectedOcorrencias = selectedOcorrencias.filter(o => o !== ocorrencia);
+            } else {
+                ocorrencia.selecionada = true;
+                button.textContent = 'SELECIONADO';
+                button.classList.add('selected');
+                selectedOcorrencias.push(ocorrencia);
+            }
+            
+            generateBtn.disabled = selectedOcorrencias.length === 0;
+        }
+
+
+        function toggleDebug(index) {
+            const debugContent = document.getElementById(`debug-${index}`);
+            debugContent.classList.toggle('expanded');
+        }
+
+        function highlightTerms(text, termsFound) {
+            if (!text || text === 'Relato não disponível') {
+                return text;
+            }
+
+            let highlightedText = text;
+            
+            // Obter termos de relevância
+            const terms = getTermsConfig();
+            
+            // Criar array de todos os termos com suas classes
+            const allTerms = [];
+            
+            // Adicionar termos de alta relevância
+            terms.alta.forEach(term => {
+                allTerms.push({ term: term, class: 'termo-alta' });
+            });
+            
+            // Adicionar termos de média relevância
+            terms.media.forEach(term => {
+                allTerms.push({ term: term, class: 'termo-media' });
+            });
+            
+            // Adicionar termos de baixa relevância
+            terms.baixa.forEach(term => {
+                allTerms.push({ term: term, class: 'termo-baixa' });
+            });
+            
+            // Ordenar por tamanho (maior primeiro) para evitar sobreposição
+            allTerms.sort((a, b) => b.term.length - a.term.length);
+            
+            // Aplicar destaque
+            allTerms.forEach(({ term, class: className }) => {
+                // Escapar caracteres especiais para regex
+                const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const regex = new RegExp(`\\b(${escapedTerm})\\b`, 'gi');
+                
+                // Verificar se o termo já não está destacado
+                const alreadyHighlighted = new RegExp(`<span class="termo-(alta|media|baixa)">`, 'gi');
+                
+                highlightedText = highlightedText.replace(regex, (match, p1) => {
+                    // Verificar se já está dentro de um span destacado
+                    const beforeMatch = highlightedText.substring(0, highlightedText.indexOf(match));
+                    const openSpans = (beforeMatch.match(/<span class="termo-(alta|media|baixa)">/g) || []).length;
+                    const closeSpans = (beforeMatch.match(/<\/span>/g) || []).length;
+                    
+                    if (openSpans > closeSpans) {
+                        return match; // Já está destacado
+                    }
+                    
+                    return `<span class="${className}">${p1}</span>`;
+                });
+            });
+            
+            return highlightedText;
+        }
+
+        async function generateReport() {
+            if (selectedOcorrencias.length === 0) return;
+
+            generateBtn.disabled = true;
+            generateBtn.textContent = 'Gerando...';
+
+            try {
+                const response = await fetch('/api/generate-report', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        selected_ocorrencias: selectedOcorrencias
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    reportOutput.value = data.report;
+                    reportContainer.style.display = 'block';
+                    
+                    // Verificar se a IA está disponível
+                    if (!data.ai_available) {
+                        showWarning('⚠️ IA indisponível: Os relatos não foram resumidos. Apenas os números BOU e naturezas foram incluídos no relatório.');
+                    } else {
+                        showSuccess(`Relatório gerado com ${selectedOcorrencias.length} ocorrências selecionadas!`);
+                    }
+                } else {
+                    showError(data.error);
+                }
+            } catch (error) {
+                showError('Erro ao gerar relatório: ' + error.message);
+            } finally {
+                generateBtn.disabled = false;
+                generateBtn.textContent = '📤 Gerar Mensagem';
+            }
+        }
+
+        function copyToClipboard() {
+            reportOutput.select();
+            document.execCommand('copy');
+            showSuccess('Relatório copiado para a área de transferência!');
+            
+            // Adicionar efeito visual ao botão
+            const copyBtn = event.target;
+            const originalText = copyBtn.textContent;
+            copyBtn.textContent = '✅ Copiado!';
+            copyBtn.style.background = 'linear-gradient(135deg, var(--success-color), #059669)';
+            
+            setTimeout(() => {
+                copyBtn.textContent = originalText;
+                copyBtn.style.background = 'linear-gradient(135deg, var(--accent-color), var(--accent-hover))';
+            }, 2000);
+        }
+
+        // ===== FUNÇÕES DO MODAL =====
+        function openModal(relatoContent) {
+            console.log('openModal chamada com:', relatoContent.substring(0, 100) + '...');
+            
+            const modal = document.getElementById('relato-modal');
+            const modalContent = document.getElementById('modal-relato-content');
+            
+            console.log('Modal encontrado:', modal);
+            console.log('Modal content encontrado:', modalContent);
+            
+            if (modal && modalContent) {
+                modalContent.innerHTML = relatoContent;
+                modal.style.display = 'block';
+                document.body.style.overflow = 'hidden'; // Previne scroll da página
+                console.log('Modal aberto com sucesso!');
+            } else {
+                console.error('Modal ou modal content não encontrado!');
+            }
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('relato-modal');
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto'; // Restaura scroll da página
+        }
+
+        // Fechar modal clicando fora dele
+        document.getElementById('relato-modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+
+        // Fechar modal com tecla ESC
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+
+        // Função para detectar se é mobile
+        function isMobile() {
+            return window.innerWidth <= 768;
+        }
+
+        // Função modificada para toggle do relato
+        function toggleRelato(button, bou) {
+            console.log('toggleRelato chamada:', { button, bou, isMobile: isMobile() });
+            
+            const content = button.nextElementSibling;
+            console.log('Conteúdo encontrado:', content);
+            
+            if (isMobile()) {
+                // No mobile, abrir modal
+                const relatoText = content.innerHTML;
+                console.log('Abrindo modal com texto:', relatoText.substring(0, 100) + '...');
+                openModal(relatoText);
+            } else {
+                // No desktop, comportamento normal
+                if (content.style.display === 'none' || content.style.display === '') {
+                    content.style.display = 'block';
+                    button.textContent = '📋 Ocultar Relato Policial';
+                } else {
+                    content.style.display = 'none';
+                    button.textContent = '📋 Ver Relato Policial';
+                }
+            }
+        }
+
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error';
+            errorDiv.textContent = message;
+            document.querySelector('.content').insertBefore(errorDiv, document.querySelector('.section'));
+            setTimeout(() => errorDiv.remove(), 5000);
+        }
+
+        function showSuccess(message) {
+            const successDiv = document.createElement('div');
+            successDiv.className = 'success';
+            successDiv.textContent = message;
+            document.querySelector('.content').insertBefore(successDiv, document.querySelector('.section'));
+            setTimeout(() => successDiv.remove(), 3000);
+        }
+
+        function showWarning(message) {
+            const warningDiv = document.createElement('div');
+            warningDiv.className = 'warning';
+            warningDiv.textContent = message;
+            document.querySelector('.content').insertBefore(warningDiv, document.querySelector('.section'));
+            setTimeout(() => warningDiv.remove(), 8000);
+        }
+
+        function showExcelInfo(excelFile) {
+            const excelDiv = document.createElement('div');
+            excelDiv.className = 'success';
+            excelDiv.innerHTML = `
+                <strong>📊 Arquivo Excel Gerado!</strong><br>
+                O PDF foi convertido para Excel para análise da estrutura.<br>
+                <a href="/api/download-excel/${excelFile}" target="_blank" style="color: #155724; text-decoration: underline;">
+                    📥 Baixar arquivo Excel: ${excelFile}
+                </a>
+            `;
+            document.querySelector('.content').insertBefore(excelDiv, document.querySelector('.section'));
+        }
+    </script>
+</body>
+</html>
