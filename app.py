@@ -7,6 +7,7 @@ from datetime import datetime
 import json
 import requests
 import pdfplumber
+import pandas as pd
 
 # Configurar Java para tabula-py - múltiplas tentativas
 java_paths = [
