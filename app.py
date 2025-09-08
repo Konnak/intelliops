@@ -6,6 +6,7 @@ import os
 from datetime import datetime
 import json
 import requests
+import pdfplumber
 
 # Configurar Java para tabula-py - múltiplas tentativas
 java_paths = [
@@ -105,6 +106,56 @@ def convert_pdf_to_excel(pdf_path):
             
     except Exception as e:
         print(f"❌ Erro geral na conversão PDF para Excel: {e}")
+        return None
+
+def convert_pdf_to_excel_with_pdfplumber(pdf_path, debug_print):
+    """
+    Converte PDF para Excel usando pdfplumber (sem Java)
+    """
+    debug_print("🚀🚀🚀 INICIANDO convert_pdf_to_excel_with_pdfplumber: " + pdf_path)
+    
+    try:
+        debug_print("📊 pdfplumber disponível, tentando extrair tabelas...")
+        
+        all_tables = []
+        with pdfplumber.open(pdf_path) as pdf:
+            debug_print(f"📄 Total de páginas: {len(pdf.pages)}")
+            
+            for page_num, page in enumerate(pdf.pages):
+                debug_print(f"🔍 Processando página {page_num + 1}...")
+                
+                # Extrair tabelas da página
+                tables = page.extract_tables()
+                debug_print(f"📋 Tabelas encontradas na página {page_num + 1}: {len(tables)}")
+                
+                for table_num, table in enumerate(tables):
+                    if table and len(table) > 1:  # Pelo menos cabeçalho + 1 linha
+                        debug_print(f"📊 Processando tabela {table_num + 1} da página {page_num + 1} ({len(table)} linhas)")
+                        all_tables.append({
+                            'page': page_num + 1,
+                            'table_num': table_num + 1,
+                            'data': table
+                        })
+        
+        debug_print(f"📋 Total de tabelas extraídas: {len(all_tables)}")
+        
+        if all_tables:
+            # Salvar como Excel
+            excel_path = pdf_path.replace('.pdf', '_tabelas_pdfplumber.xlsx')
+            with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
+                for i, table_info in enumerate(all_tables):
+                    table_df = pd.DataFrame(table_info['data'][1:], columns=table_info['data'][0])
+                    sheet_name = f"P{table_info['page']}_T{table_info['table_num']}"
+                    table_df.to_excel(writer, sheet_name=sheet_name, index=False)
+            
+            debug_print(f"✅ Excel salvo com pdfplumber: {excel_path}")
+            return excel_path
+        else:
+            debug_print("❌ Nenhuma tabela encontrada no PDF com pdfplumber")
+            return None
+            
+    except Exception as e:
+        debug_print(f"❌ Erro na extração com pdfplumber: {e}")
         return None
 
 def convert_pdf_to_excel_with_debug(pdf_path, debug_print):
@@ -222,15 +273,26 @@ def extract_text_from_pdf_with_debug(pdf_path, debug_print):
     try:
         debug_print(f"🔍 Iniciando extração de ocorrências do PDF: {pdf_path}")
         
-        # Primeiro tentar conversão para Excel
-        debug_print("🚀 CHAMANDO convert_pdf_to_excel...")
-        tables = convert_pdf_to_excel_with_debug(pdf_path, debug_print)
-        debug_print(f"🔍 Resultado convert_pdf_to_excel: {tables is not None}")
+        # Primeiro tentar conversão para Excel com pdfplumber (sem Java)
+        debug_print("🚀 CHAMANDO convert_pdf_to_excel_with_pdfplumber...")
+        tables = convert_pdf_to_excel_with_pdfplumber(pdf_path, debug_print)
+        debug_print(f"🔍 Resultado convert_pdf_to_excel_with_pdfplumber: {tables is not None}")
         if tables:
-            debug_print("📊 Processando tabelas extraídas...")
+            debug_print("📊 Processando tabelas extraídas com pdfplumber...")
             ocorrencias = process_excel_tables_with_debug(tables, debug_print)
             if ocorrencias:
-                debug_print(f"✅ Encontradas {len(ocorrencias)} ocorrências via Excel")
+                debug_print(f"✅ Encontradas {len(ocorrencias)} ocorrências via Excel (pdfplumber)")
+                return ocorrencias
+        
+        # Fallback: tentar tabula-py (com Java)
+        debug_print("🚀 FALLBACK: CHAMANDO convert_pdf_to_excel (tabula-py)...")
+        tables = convert_pdf_to_excel_with_debug(pdf_path, debug_print)
+        debug_print(f"🔍 Resultado convert_pdf_to_excel (tabula-py): {tables is not None}")
+        if tables:
+            debug_print("📊 Processando tabelas extraídas com tabula-py...")
+            ocorrencias = process_excel_tables_with_debug(tables, debug_print)
+            if ocorrencias:
+                debug_print(f"✅ Encontradas {len(ocorrencias)} ocorrências via Excel (tabula-py)")
                 return ocorrencias
         
         # Fallback: extração de texto
