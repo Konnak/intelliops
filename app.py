@@ -67,8 +67,9 @@ def convert_pdf_to_excel(pdf_path):
                         sheet_name = f'Tabela_{i+1}'
                         table.to_excel(writer, sheet_name=sheet_name, index=False)
                         
-                        print(f"Tabela {i+1} salva com {len(table)} linhas e {len(table.columns)} colunas")
-                        print(f"Colunas: {list(table.columns)}")
+        print(f"📋 Tabela {i+1} salva com {len(table)} linhas e {len(table.columns)} colunas")
+        print(f"📋 Colunas: {list(table.columns)}")
+        print(f"📋 Primeiras 3 linhas: {table.head(3).values.tolist()}")
             
             return excel_path, tables
         else:
@@ -87,13 +88,15 @@ def extract_text_from_pdf(pdf_path):
     excel_path, tables = convert_pdf_to_excel(pdf_path)
     
     if tables:
-        print(f"PDF convertido para Excel: {excel_path}")
+        print(f"✅ PDF convertido para Excel: {excel_path}")
         # Processar tabelas extraídas usando nova lógica
         ocorrencias = process_excel_tables(tables)
         
         if ocorrencias:
-            print(f"Método Excel encontrou {len(ocorrencias)} ocorrências")
+            print(f"✅ Método Excel encontrou {len(ocorrencias)} ocorrências")
             return ocorrencias
+        else:
+            print("❌ Nenhuma ocorrência encontrada no método Excel")
     
     # Método 1: Tentar extração estruturada por blocos
     try:
