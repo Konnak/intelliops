@@ -81,8 +81,8 @@ def extract_from_text(text):
     while i < len(lines):
         line = lines[i].strip()
         
-        # Procurar BOU
-        bou_match = re.search(r'(\d{4}/\d{4,7})', line)
+        # Procurar BOU válido (formato: 2025/1135296)
+        bou_match = re.search(r'(2025/\d{4,7})', line)
         if bou_match:
             bou = bou_match.group(1)
             
@@ -102,8 +102,8 @@ def extract_from_text(text):
             while j < len(lines):
                 next_line = lines[j].strip()
                 
-                # Verificar se é novo BOU
-                if re.search(r'(\d{4}/\d{4,7})', next_line):
+                # Verificar se é novo BOU válido
+                if re.search(r'(2025/\d{4,7})', next_line):
                     break
                 
                 # Procurar por padrões específicos
@@ -116,7 +116,7 @@ def extract_from_text(text):
                 elif 'RELATO:' in next_line or 'Relato:' in next_line:
                     # Coletar relato (pode ser múltiplas linhas)
                     relato_lines = [next_line.split(':', 1)[1].strip()]
-                else:
+                elif next_line and not any(x in next_line for x in ['NATUREZA:', 'ENDEREÇO:', 'DATA GERAÇÃO:', 'RELATO:']):
                     # Se não é um campo específico, pode ser parte do relato
                     if relato_lines and next_line:
                         relato_lines.append(next_line)
@@ -154,15 +154,19 @@ def extract_from_text(text):
             if not ocorrencia['relato']:
                 ocorrencia['relato'] = ' '.join(lines[i:j]).strip()
             
-            # Debug: mostrar o que foi extraído
-            print(f"🔍 BOU: {ocorrencia['bou']}")
-            print(f"📋 Natureza: {ocorrencia['natureza'][:50]}..." if ocorrencia['natureza'] else "📋 Natureza: N/A")
-            print(f"📍 Endereço: {ocorrencia['endereco'][:50]}..." if ocorrencia['endereco'] else "📍 Endereço: N/A")
-            print(f"📅 Data: {ocorrencia['data_geracao']}" if ocorrencia['data_geracao'] else "📅 Data: N/A")
-            print(f"📝 Relato: {ocorrencia['relato'][:100]}..." if ocorrencia['relato'] else "📝 Relato: N/A")
-            print("---")
-            
-            ocorrencias.append(ocorrencia)
+            # Validar se é uma ocorrência válida
+            if len(ocorrencia['bou']) >= 10 and ocorrencia['bou'].startswith('2025/'):
+                # Debug: mostrar o que foi extraído
+                print(f"🔍 BOU: {ocorrencia['bou']}")
+                print(f"📋 Natureza: {ocorrencia['natureza'][:50]}..." if ocorrencia['natureza'] else "📋 Natureza: N/A")
+                print(f"📍 Endereço: {ocorrencia['endereco'][:50]}..." if ocorrencia['endereco'] else "📍 Endereço: N/A")
+                print(f"📅 Data: {ocorrencia['data_geracao']}" if ocorrencia['data_geracao'] else "📅 Data: N/A")
+                print(f"📝 Relato: {ocorrencia['relato'][:100]}..." if ocorrencia['relato'] else "📝 Relato: N/A")
+                print("---")
+                
+                ocorrencias.append(ocorrencia)
+            else:
+                print(f"❌ BOU inválido ignorado: {ocorrencia['bou']}")
             i = j
         else:
             i += 1
