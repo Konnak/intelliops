@@ -26,7 +26,7 @@ print("✅ IA Google Gemini configurada com sucesso!")
 try:
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 except:
-    # Em produção, usar pasta temporária
+    # Em produção (Discloud), usar pasta temporária
     app.config['UPLOAD_FOLDER'] = '/tmp'
 
 # Termos de relevância padrão
@@ -1156,4 +1156,6 @@ def download_excel(filename):
         return jsonify({'error': f'Erro ao baixar arquivo: {str(e)}'}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # Para Discloud
+    port = int(os.environ.get('PORT', 5000))
+    app.run(debug=False, host='0.0.0.0', port=port)
