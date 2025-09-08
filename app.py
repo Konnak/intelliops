@@ -331,6 +331,122 @@ def process_excel_tables(tables):
             if hasattr(table, 'empty') and table.empty:
                 print(f"  ❌ Tabela {i+1} está vazia, pulando...")
                 continue
+                
+            # Converter para DataFrame se necessário
+            if not isinstance(table, pd.DataFrame):
+                table = pd.DataFrame(table)
+            
+            print(f"📋 Colunas da tabela: {list(table.columns)}")
+            print(f"📏 Dimensões: {table.shape}")
+            
+            # Procurar coluna com BOU
+            bou_column = None
+            print(f"  🔍 Procurando coluna BOU...")
+            print(f"  📋 Colunas disponíveis: {list(table.columns)}")
+            
+            # Primeiro, mostrar algumas linhas da tabela para debug
+            print(f"  📊 Primeiras 3 linhas da tabela:")
+            for idx in range(min(3, len(table))):
+                row_data = {}
+                for col in table.columns:
+                    row_data[col] = str(table.iloc[idx][col])[:50] if pd.notna(table.iloc[idx][col]) else "NaN"
+                print(f"    Linha {idx}: {row_data}")
+            
+            for col in table.columns:
+                if any('bou' in str(col).lower() or '2025/' in str(table[col].iloc[0] if len(table) > 0 else '') for _ in [1]):
+                    bou_column = col
+                    print(f"  ✅ Coluna BOU encontrada por nome: {col}")
+                    break
+            
+            if bou_column is None:
+                # Procurar por padrão BOU na primeira coluna
+                first_col = table.columns[0]
+                print(f"  🔍 Procurando BOU na primeira coluna: {first_col}")
+                for idx, row in table.iterrows():
+                    if pd.notna(row[first_col]) and '2025/' in str(row[first_col]):
+                        bou_column = first_col
+                        print(f"  ✅ Coluna BOU encontrada por conteúdo: {first_col}")
+                        break
+            
+            if bou_column is None:
+                print(f"  ❌ Nenhuma coluna BOU encontrada na tabela {i+1}")
+                print(f"  📋 Tentando procurar em todas as colunas...")
+                for col in table.columns:
+                    for idx, row in table.iterrows():
+                        if pd.notna(row[col]) and '2025/' in str(row[col]):
+                            bou_column = col
+                            print(f"  ✅ Coluna BOU encontrada: {col}")
+                            break
+                    if bou_column:
+                        break
+                        
+            if bou_column is None:
+                print(f"  ❌ Nenhuma coluna BOU encontrada na tabela {i+1}, pulando...")
+                continue
+            
+            print(f"✅ Coluna BOU encontrada: {bou_column}")
+            
+            # Processar cada linha da tabela
+            for idx, row in table.iterrows():
+                bou_value = row[bou_column]
+                
+                if pd.notna(bou_value) and '2025/' in str(bou_value):
+                    # Extrair BOU
+                    bou_match = re.search(r'(2025/\d{4,7})', str(bou_value))
+                    if bou_match:
+                        bou = bou_match.group(1)
+                        
+                        # Criar ocorrência
+                        ocorrencia = {
+                            'bou': bou,
+                            'relato': '',
+                            'natureza': '',
+                            'endereco': '',
+                            'data_geracao': ''
+                        }
+                        
+                        # Extrair outros campos da linha
+                        for col in table.columns:
+                            if pd.notna(row[col]):
+                                value = str(row[col]).strip()
+                                
+                                # Identificar tipo de campo
+                                if 'natureza' in col.lower():
+                                    ocorrencia['natureza'] = value
+                                elif 'endereço' in col.lower() or 'endereco' in col.lower():
+                                    ocorrencia['endereco'] = value
+                                elif 'data' in col.lower() and 'geração' in col.lower():
+                                    ocorrencia['data_geracao'] = value
+                                elif 'relato' in col.lower():
+                                    ocorrencia['relato'] = value
+                                elif len(value) > 50 and not value.startswith('2025/'):
+                                    # Provavelmente é o relato
+                                    ocorrencia['relato'] = value
+                        
+                        # Se não encontrou relato, usar toda a linha
+                        if not ocorrencia['relato']:
+                            relato_parts = []
+                            for col in table.columns:
+                                if pd.notna(row[col]) and col != bou_column:
+                                    value = str(row[col]).strip()
+                                    if value and not value.startswith('2025/'):
+                                        relato_parts.append(value)
+                            ocorrencia['relato'] = ' '.join(relato_parts)
+                        
+                        print(f"🔍 BOU: {ocorrencia['bou']}")
+                        print(f"📋 Natureza: {ocorrencia['natureza'][:50]}..." if ocorrencia['natureza'] else "📋 Natureza: N/A")
+                        print(f"📍 Endereço: {ocorrencia['endereco'][:50]}..." if ocorrencia['endereco'] else "📍 Endereço: N/A")
+                        print(f"📅 Data: {ocorrencia['data_geracao']}" if ocorrencia['data_geracao'] else "📅 Data: N/A")
+                        print(f"📝 Relato: {ocorrencia['relato'][:100]}..." if ocorrencia['relato'] else "📝 Relato: N/A")
+                        print("---")
+                        
+                        ocorrencias.append(ocorrencia)
+        
+        return ocorrencias
+        
+    except Exception as e:
+        print(f"Erro ao processar tabelas: {e}")
+        return []
 
 def process_excel_tables_with_debug(tables, debug_print):
     """Processa tabelas extraídas do PDF com debug"""
