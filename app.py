@@ -45,7 +45,7 @@ CIDADES = [
 def convert_pdf_to_excel(pdf_path):
     """Converte PDF para Excel usando tabula-py"""
     try:
-        print(f"🔍 Iniciando conversão PDF para Excel: {pdf_path}")
+        print(f"🚀🚀🚀 INICIANDO convert_pdf_to_excel: {pdf_path}")
         
         # Verificar se o arquivo existe
         import os
@@ -91,7 +91,9 @@ def extract_text_from_pdf(pdf_path):
         print(f"🔍 Iniciando extração de ocorrências do PDF: {pdf_path}")
         
         # Primeiro tentar conversão para Excel
+        print("🚀 CHAMANDO convert_pdf_to_excel...")
         tables = convert_pdf_to_excel(pdf_path)
+        print(f"🔍 Resultado convert_pdf_to_excel: {tables is not None}")
         if tables:
             print("📊 Processando tabelas extraídas...")
             ocorrencias = process_excel_tables(tables)
