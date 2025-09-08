@@ -641,18 +641,33 @@ def process_excel_tables_with_debug(tables, debug_print):
             
             debug_print(f"✅ Coluna BOU encontrada: {bou_column}")
             
-            # Processar cada linha da tabela
+            # LÓGICA CORRETA: Processar por BOU, acumulando dados de múltiplas linhas
+            current_bou = None
+            current_ocorrencia = {}
+            
             for idx, row in table.iterrows():
                 bou_value = row[bou_column]
                 
+                # Verificar se é um novo BOU
                 if pd.notna(bou_value) and '2025/' in str(bou_value):
-                    # Extrair BOU
                     bou_match = re.search(r'(2025/\d{4,7})', str(bou_value))
                     if bou_match:
                         bou = bou_match.group(1)
                         
-                        # Criar ocorrência
-                        ocorrencia = {
+                        # Se já temos um BOU anterior, salvar ele
+                        if current_bou and current_ocorrencia:
+                            debug_print(f"🔍 BOU: {current_bou}")
+                            debug_print(f"📋 Natureza: {current_ocorrencia.get('natureza', 'N/A')[:50]}...")
+                            debug_print(f"📍 Endereço: {current_ocorrencia.get('endereco', 'N/A')[:50]}...")
+                            debug_print(f"📅 Data: {current_ocorrencia.get('data_geracao', 'N/A')}")
+                            debug_print(f"📝 Relato: {current_ocorrencia.get('relato', 'N/A')[:100]}...")
+                            debug_print("---")
+                            
+                            ocorrencias.append(current_ocorrencia)
+                        
+                        # Iniciar novo BOU
+                        current_bou = bou
+                        current_ocorrencia = {
                             'bou': bou,
                             'relato': '',
                             'natureza': '',
@@ -660,42 +675,72 @@ def process_excel_tables_with_debug(tables, debug_print):
                             'data_geracao': ''
                         }
                         
-                        # Extrair outros campos da linha
+                        # Extrair dados da linha atual
                         for col in table.columns:
                             if pd.notna(row[col]):
                                 value = str(row[col]).strip()
                                 
                                 # Identificar tipo de campo
                                 if 'natureza' in col.lower():
-                                    ocorrencia['natureza'] = value
+                                    current_ocorrencia['natureza'] = value
                                 elif 'endereço' in col.lower() or 'endereco' in col.lower():
-                                    ocorrencia['endereco'] = value
+                                    current_ocorrencia['endereco'] = value
                                 elif 'data' in col.lower() and 'geração' in col.lower():
-                                    ocorrencia['data_geracao'] = value
+                                    current_ocorrencia['data_geracao'] = value
                                 elif 'relato' in col.lower():
-                                    ocorrencia['relato'] = value
+                                    current_ocorrencia['relato'] = value
                                 elif len(value) > 50 and not value.startswith('2025/'):
                                     # Provavelmente é o relato
-                                    ocorrencia['relato'] = value
+                                    current_ocorrencia['relato'] = value
                         
                         # Se não encontrou relato, usar toda a linha
-                        if not ocorrencia['relato']:
+                        if not current_ocorrencia['relato']:
                             relato_parts = []
                             for col in table.columns:
                                 if pd.notna(row[col]) and col != bou_column:
                                     value = str(row[col]).strip()
                                     if value and not value.startswith('2025/'):
                                         relato_parts.append(value)
-                            ocorrencia['relato'] = ' '.join(relato_parts)
-                        
-                        debug_print(f"🔍 BOU: {ocorrencia['bou']}")
-                        debug_print(f"📋 Natureza: {ocorrencia['natureza'][:50]}..." if ocorrencia['natureza'] else "📋 Natureza: N/A")
-                        debug_print(f"📍 Endereço: {ocorrencia['endereco'][:50]}..." if ocorrencia['endereco'] else "📍 Endereço: N/A")
-                        debug_print(f"📅 Data: {ocorrencia['data_geracao']}" if ocorrencia['data_geracao'] else "📅 Data: N/A")
-                        debug_print(f"📝 Relato: {ocorrencia['relato'][:100]}..." if ocorrencia['relato'] else "📝 Relato: N/A")
-                        debug_print("---")
-                        
-                        ocorrencias.append(ocorrencia)
+                            current_ocorrencia['relato'] = ' '.join(relato_parts)
+                else:
+                    # Continuar acumulando dados para o BOU atual
+                    if current_bou:
+                        for col in table.columns:
+                            if pd.notna(row[col]):
+                                value = str(row[col]).strip()
+                                
+                                # Concatenar dados se necessário
+                                if 'natureza' in col.lower() and value:
+                                    if current_ocorrencia['natureza']:
+                                        current_ocorrencia['natureza'] += ' ' + value
+                                    else:
+                                        current_ocorrencia['natureza'] = value
+                                elif 'endereço' in col.lower() or 'endereco' in col.lower():
+                                    if value:
+                                        if current_ocorrencia['endereco']:
+                                            current_ocorrencia['endereco'] += ' ' + value
+                                        else:
+                                            current_ocorrencia['endereco'] = value
+                                elif 'relato' in col.lower():
+                                    if value:
+                                        if current_ocorrencia['relato']:
+                                            current_ocorrencia['relato'] += ' ' + value
+                                        else:
+                                            current_ocorrencia['relato'] = value
+                                elif 'data' in col.lower() and 'geração' in col.lower():
+                                    if value:
+                                        current_ocorrencia['data_geracao'] = value
+            
+            # Salvar o último BOU se existir
+            if current_bou and current_ocorrencia:
+                debug_print(f"🔍 BOU: {current_bou}")
+                debug_print(f"📋 Natureza: {current_ocorrencia.get('natureza', 'N/A')[:50]}...")
+                debug_print(f"📍 Endereço: {current_ocorrencia.get('endereco', 'N/A')[:50]}...")
+                debug_print(f"📅 Data: {current_ocorrencia.get('data_geracao', 'N/A')}")
+                debug_print(f"📝 Relato: {current_ocorrencia.get('relato', 'N/A')[:100]}...")
+                debug_print("---")
+                
+                ocorrencias.append(current_ocorrencia)
         
         return ocorrencias
         
