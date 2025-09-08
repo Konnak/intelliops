@@ -85,6 +85,49 @@ def convert_pdf_to_excel(pdf_path):
         print(f"❌ Erro geral na conversão PDF para Excel: {e}")
         return None
 
+def convert_pdf_to_excel_with_debug(pdf_path, debug_print):
+    """Converte PDF para Excel usando tabula-py com debug"""
+    try:
+        debug_print(f"🚀🚀🚀 INICIANDO convert_pdf_to_excel: {pdf_path}")
+        
+        # Verificar se o arquivo existe
+        import os
+        if not os.path.exists(pdf_path):
+            debug_print(f"❌ Arquivo PDF não encontrado: {pdf_path}")
+            return None
+        
+        # Tentar extrair tabelas do PDF
+        try:
+            import tabula
+            debug_print("📊 tabula-py disponível, tentando extrair tabelas...")
+            
+            # Extrair todas as tabelas do PDF
+            tables = tabula.read_pdf(pdf_path, pages='all', multiple_tables=True)
+            
+            debug_print(f"📋 Resultado da extração: {type(tables)}")
+            if tables:
+                debug_print(f"✅ Encontradas {len(tables)} tabelas no PDF")
+                for i, table in enumerate(tables):
+                    if table is not None:
+                        debug_print(f"  Tabela {i+1}: {table.shape} - Colunas: {list(table.columns) if hasattr(table, 'columns') else 'N/A'}")
+                    else:
+                        debug_print(f"  Tabela {i+1}: None")
+                return tables
+            else:
+                debug_print("❌ Nenhuma tabela encontrada, tentando extração de texto")
+                return None
+                
+        except ImportError as ie:
+            debug_print(f"❌ tabula-py não disponível: {ie}")
+            return None
+        except Exception as te:
+            debug_print(f"❌ Erro na extração com tabula: {te}")
+            return None
+            
+    except Exception as e:
+        debug_print(f"❌ Erro geral na conversão PDF para Excel: {e}")
+        return None
+
 def extract_text_from_pdf(pdf_path):
     """Extrai texto do PDF e retorna as ocorrências estruturadas"""
     try:
@@ -124,6 +167,47 @@ def extract_text_from_pdf(pdf_path):
             
     except Exception as e:
         print(f"Erro na extração: {e}")
+        return []
+
+def extract_text_from_pdf_with_debug(pdf_path, debug_print):
+    """Extrai texto do PDF com logs de debug coletados"""
+    try:
+        debug_print(f"🔍 Iniciando extração de ocorrências do PDF: {pdf_path}")
+        
+        # Primeiro tentar conversão para Excel
+        debug_print("🚀 CHAMANDO convert_pdf_to_excel...")
+        tables = convert_pdf_to_excel_with_debug(pdf_path, debug_print)
+        debug_print(f"🔍 Resultado convert_pdf_to_excel: {tables is not None}")
+        if tables:
+            debug_print("📊 Processando tabelas extraídas...")
+            ocorrencias = process_excel_tables_with_debug(tables, debug_print)
+            if ocorrencias:
+                debug_print(f"✅ Encontradas {len(ocorrencias)} ocorrências via Excel")
+                return ocorrencias
+        
+        # Fallback: extração de texto
+        debug_print("📝 Fallback: extração de texto...")
+        with open(pdf_path, 'rb') as file:
+            pdf_reader = PyPDF2.PdfReader(file)
+            text = ""
+            
+            for page_num in range(len(pdf_reader.pages)):
+                page = pdf_reader.pages[page_num]
+                text += page.extract_text() + "\n"
+            
+            debug_print(f"✅ Texto extraído com sucesso ({len(text)} caracteres)")
+            
+            # Processar texto extraído
+            ocorrencias = extract_from_text(text)
+            if ocorrencias:
+                debug_print(f"✅ Encontradas {len(ocorrencias)} ocorrências via texto")
+                return ocorrencias
+            else:
+                debug_print("❌ Nenhuma ocorrência encontrada no texto")
+                return []
+            
+    except Exception as e:
+        debug_print(f"❌ Erro na extração: {e}")
         return []
 
 def extract_from_text(text):
@@ -247,60 +331,79 @@ def process_excel_tables(tables):
             if hasattr(table, 'empty') and table.empty:
                 print(f"  ❌ Tabela {i+1} está vazia, pulando...")
                 continue
+
+def process_excel_tables_with_debug(tables, debug_print):
+    """Processa tabelas extraídas do PDF com debug"""
+    ocorrencias = []
+    
+    try:
+        import pandas as pd
+        debug_print(f"🔍 Iniciando processamento de {len(tables)} tabelas")
+        
+        for i, table in enumerate(tables):
+            debug_print(f"📊 Processando tabela {i+1}/{len(tables)}")
+            
+            if table is None:
+                debug_print(f"  ❌ Tabela {i+1} é None, pulando...")
+                continue
+                
+            if hasattr(table, 'empty') and table.empty:
+                debug_print(f"  ❌ Tabela {i+1} está vazia, pulando...")
+                continue
                 
             # Converter para DataFrame se necessário
             if not isinstance(table, pd.DataFrame):
                 table = pd.DataFrame(table)
             
-            print(f"📋 Colunas da tabela: {list(table.columns)}")
-            print(f"📏 Dimensões: {table.shape}")
+            debug_print(f"📋 Colunas da tabela: {list(table.columns)}")
+            debug_print(f"📏 Dimensões: {table.shape}")
             
             # Procurar coluna com BOU
             bou_column = None
-            print(f"  🔍 Procurando coluna BOU...")
-            print(f"  📋 Colunas disponíveis: {list(table.columns)}")
+            debug_print(f"  🔍 Procurando coluna BOU...")
+            debug_print(f"  📋 Colunas disponíveis: {list(table.columns)}")
             
             # Primeiro, mostrar algumas linhas da tabela para debug
-            print(f"  📊 Primeiras 3 linhas da tabela:")
+            debug_print(f"  📊 Primeiras 3 linhas da tabela:")
             for idx in range(min(3, len(table))):
                 row_data = {}
                 for col in table.columns:
                     row_data[col] = str(table.iloc[idx][col])[:50] if pd.notna(table.iloc[idx][col]) else "NaN"
-                print(f"    Linha {idx}: {row_data}")
+                debug_print(f"    Linha {idx}: {row_data}")
             
             for col in table.columns:
                 if any('bou' in str(col).lower() or '2025/' in str(table[col].iloc[0] if len(table) > 0 else '') for _ in [1]):
                     bou_column = col
-                    print(f"  ✅ Coluna BOU encontrada por nome: {col}")
+                    debug_print(f"  ✅ Coluna BOU encontrada por nome: {col}")
                     break
             
             if bou_column is None:
                 # Procurar por padrão BOU na primeira coluna
                 first_col = table.columns[0]
-                print(f"  🔍 Procurando BOU na primeira coluna: {first_col}")
+                debug_print(f"  🔍 Procurando BOU na primeira coluna: {first_col}")
                 for idx, row in table.iterrows():
                     if pd.notna(row[first_col]) and '2025/' in str(row[first_col]):
                         bou_column = first_col
-                        print(f"  ✅ Coluna BOU encontrada por conteúdo: {first_col}")
+                        debug_print(f"  ✅ Coluna BOU encontrada por conteúdo: {first_col}")
                         break
             
             if bou_column is None:
-                print(f"  ❌ Nenhuma coluna BOU encontrada na tabela {i+1}")
-                print(f"  📋 Tentando procurar em todas as colunas...")
+                debug_print(f"  ❌ Nenhuma coluna BOU encontrada na tabela {i+1}")
+                debug_print(f"  📋 Tentando procurar em todas as colunas...")
                 for col in table.columns:
                     for idx, row in table.iterrows():
                         if pd.notna(row[col]) and '2025/' in str(row[col]):
                             bou_column = col
-                            print(f"  ✅ Coluna BOU encontrada: {col}")
+                            debug_print(f"  ✅ Coluna BOU encontrada: {col}")
                             break
                     if bou_column:
                         break
                         
             if bou_column is None:
-                print(f"  ❌ Nenhuma coluna BOU encontrada na tabela {i+1}, pulando...")
+                debug_print(f"  ❌ Nenhuma coluna BOU encontrada na tabela {i+1}, pulando...")
                 continue
             
-            print(f"✅ Coluna BOU encontrada: {bou_column}")
+            debug_print(f"✅ Coluna BOU encontrada: {bou_column}")
             
             # Processar cada linha da tabela
             for idx, row in table.iterrows():
@@ -349,19 +452,19 @@ def process_excel_tables(tables):
                                         relato_parts.append(value)
                             ocorrencia['relato'] = ' '.join(relato_parts)
                         
-                        print(f"🔍 BOU: {ocorrencia['bou']}")
-                        print(f"📋 Natureza: {ocorrencia['natureza'][:50]}..." if ocorrencia['natureza'] else "📋 Natureza: N/A")
-                        print(f"📍 Endereço: {ocorrencia['endereco'][:50]}..." if ocorrencia['endereco'] else "📍 Endereço: N/A")
-                        print(f"📅 Data: {ocorrencia['data_geracao']}" if ocorrencia['data_geracao'] else "📅 Data: N/A")
-                        print(f"📝 Relato: {ocorrencia['relato'][:100]}..." if ocorrencia['relato'] else "📝 Relato: N/A")
-                        print("---")
+                        debug_print(f"🔍 BOU: {ocorrencia['bou']}")
+                        debug_print(f"📋 Natureza: {ocorrencia['natureza'][:50]}..." if ocorrencia['natureza'] else "📋 Natureza: N/A")
+                        debug_print(f"📍 Endereço: {ocorrencia['endereco'][:50]}..." if ocorrencia['endereco'] else "📍 Endereço: N/A")
+                        debug_print(f"📅 Data: {ocorrencia['data_geracao']}" if ocorrencia['data_geracao'] else "📅 Data: N/A")
+                        debug_print(f"📝 Relato: {ocorrencia['relato'][:100]}..." if ocorrencia['relato'] else "📝 Relato: N/A")
+                        debug_print("---")
                         
                         ocorrencias.append(ocorrencia)
         
         return ocorrencias
         
     except Exception as e:
-        print(f"Erro ao processar tabelas: {e}")
+        debug_print(f"❌ Erro ao processar tabelas: {e}")
         return []
 
 def analyze_relevance(ocorrencias, terms):
@@ -564,6 +667,12 @@ def favicon():
 
 @app.route('/api/analyze', methods=['POST'])
 def analyze_pdf():
+    debug_logs = []  # Lista para coletar logs de debug
+    
+    def debug_print(message):
+        print(message)
+        debug_logs.append(message)
+    
     try:
         if 'file' not in request.files:
             return jsonify({'error': 'Nenhum arquivo enviado'}), 400
@@ -577,11 +686,16 @@ def analyze_pdf():
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(filepath)
             
-            # Extrair ocorrências
-            ocorrencias = extract_text_from_pdf(filepath)
+            debug_print(f"📁 Arquivo salvo: {filepath}")
+            
+            # Extrair ocorrências com debug
+            ocorrencias = extract_text_from_pdf_with_debug(filepath, debug_print)
             
             if not ocorrencias:
-                return jsonify({'error': 'Nenhuma ocorrência encontrada no PDF'}), 400
+                return jsonify({
+                    'error': 'Nenhuma ocorrência encontrada no PDF',
+                    'debug_logs': debug_logs
+                }), 400
             
             # Analisar relevância - usar termos padrão
             terms = DEFAULT_TERMS
@@ -595,13 +709,18 @@ def analyze_pdf():
                 'total': len(ocorrencias),
                 'alta': len([o for o in ocorrencias if o['relevancia'] == 'alta']),
                 'media': len([o for o in ocorrencias if o['relevancia'] == 'media']),
-                'baixa': len([o for o in ocorrencias if o['relevancia'] == 'baixa'])
+                'baixa': len([o for o in ocorrencias if o['relevancia'] == 'baixa']),
+                'debug_logs': debug_logs
             })
         else:
             return jsonify({'error': 'Arquivo deve ser um PDF'}), 400
             
     except Exception as e:
-        return jsonify({'error': f'Erro ao processar arquivo: {str(e)}'}), 500
+        debug_print(f"❌ Erro geral: {str(e)}")
+        return jsonify({
+            'error': f'Erro ao processar arquivo: {str(e)}',
+            'debug_logs': debug_logs
+        }), 500
 
 @app.route('/api/generate-report', methods=['POST'])
 def generate_report_api():

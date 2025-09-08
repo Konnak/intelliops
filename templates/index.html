@@ -1578,6 +1578,15 @@
 
                 const data = await response.json();
 
+                // Exibir logs de debug no console do navegador
+                if (data.debug_logs) {
+                    console.log("=== LOGS DE DEBUG ===");
+                    data.debug_logs.forEach(log => {
+                        console.log(log);
+                    });
+                    console.log("=== FIM DOS LOGS ===");
+                }
+
                 if (data.ocorrencias) {
                     currentOcorrencias = data.ocorrencias;
                     selectedOcorrencias = [];
