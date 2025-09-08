@@ -1578,7 +1578,7 @@
 
                 const data = await response.json();
 
-                if (data.success) {
+                if (data.ocorrencias) {
                     currentOcorrencias = data.ocorrencias;
                     selectedOcorrencias = [];
                     displayResults(data.ocorrencias);
@@ -1782,7 +1782,7 @@
 
                 const data = await response.json();
 
-                if (data.success) {
+                if (data.report) {
                     reportOutput.value = data.report;
                     reportContainer.style.display = 'block';
                     
