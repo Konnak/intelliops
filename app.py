@@ -7,6 +7,10 @@ from datetime import datetime
 import json
 import requests
 
+# Configurar Java para tabula-py
+os.environ['JAVA_HOME'] = '/usr/lib/jvm/java-11-openjdk-amd64'
+os.environ['PATH'] = f"/usr/lib/jvm/java-11-openjdk-amd64/bin:{os.environ.get('PATH', '')}"
+
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 app.config['UPLOAD_FOLDER'] = 'uploads'
@@ -89,6 +93,10 @@ def convert_pdf_to_excel_with_debug(pdf_path, debug_print):
     """Converte PDF para Excel usando tabula-py com debug"""
     try:
         debug_print(f"🚀🚀🚀 INICIANDO convert_pdf_to_excel: {pdf_path}")
+        
+        # Verificar configuração do Java
+        java_home = os.environ.get('JAVA_HOME', 'NÃO DEFINIDO')
+        debug_print(f"☕ JAVA_HOME: {java_home}")
         
         # Verificar se o arquivo existe
         import os
