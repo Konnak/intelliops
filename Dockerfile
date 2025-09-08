@@ -1,5 +1,5 @@
-# Use Python 3.12 for better compatibility with pandas 2.2.0
-FROM python:3.12-slim
+# Use Python 3.13 with pandas 2.2.3+ for full compatibility
+FROM python:3.13-slim
 
 # Install system dependencies required for pandas compilation and tabula-py
 RUN apt-get update && apt-get install -y \
