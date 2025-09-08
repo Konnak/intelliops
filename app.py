@@ -349,8 +349,8 @@ def analyze_pdf():
             if not ocorrencias:
                 return jsonify({'error': 'Nenhuma ocorrência encontrada no PDF'}), 400
             
-            # Analisar relevância
-            terms = request.json.get('terms', DEFAULT_TERMS) if request.json else DEFAULT_TERMS
+            # Analisar relevância - usar termos padrão
+            terms = DEFAULT_TERMS
             ocorrencias = analyze_relevance(ocorrencias, terms)
             
             # Ordenar por relevância e score
