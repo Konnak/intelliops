@@ -150,7 +150,16 @@ def convert_pdf_to_excel_with_pdfplumber(pdf_path, debug_print):
                     table_df.to_excel(writer, sheet_name=sheet_name, index=False)
             
             debug_print(f"✅ Excel salvo com pdfplumber: {excel_path}")
-            return excel_path
+            
+            # Retornar lista de DataFrames para processamento
+            dataframes = []
+            for table_info in all_tables:
+                if len(table_info['data']) > 1:  # Pelo menos cabeçalho + 1 linha
+                    df = pd.DataFrame(table_info['data'][1:], columns=table_info['data'][0])
+                    dataframes.append(df)
+            
+            debug_print(f"📊 Retornando {len(dataframes)} DataFrames para processamento")
+            return dataframes
         else:
             debug_print("❌ Nenhuma tabela encontrada no PDF com pdfplumber")
             return None
