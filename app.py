@@ -22,12 +22,12 @@ GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', 'AIzaSyCo0mC8kOeQdiJpvu3ToG0gL6tQf0
 AI_AVAILABLE = True
 print("✅ IA Google Gemini configurada com sucesso!")
 
-# Criar pasta de uploads se não existir (apenas em desenvolvimento)
-if not os.path.exists(app.config['UPLOAD_FOLDER']):
-    try:
-        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-    except:
-        pass  # Em produção, pode não ter permissão para criar pastas
+# Criar pasta de uploads se não existir
+try:
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+except:
+    # Em produção, usar pasta temporária
+    app.config['UPLOAD_FOLDER'] = '/tmp'
 
 # Termos de relevância padrão
 DEFAULT_TERMS = {
@@ -1041,6 +1041,10 @@ TOTAL NA ÁREA *{total:02d}*"""
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route('/favicon.ico')
+def favicon():
+    return '', 404  # Retorna 404 para evitar erro no log
 
 @app.route('/api/analyze', methods=['POST'])
 def analyze_pdf():
