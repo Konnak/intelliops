@@ -98,6 +98,29 @@ def convert_pdf_to_excel_with_debug(pdf_path, debug_print):
         java_home = os.environ.get('JAVA_HOME', 'NÃO DEFINIDO')
         debug_print(f"☕ JAVA_HOME: {java_home}")
         
+        # Verificar se o Java está instalado
+        import subprocess
+        try:
+            java_version = subprocess.check_output(['java', '-version'], stderr=subprocess.STDOUT, text=True)
+            debug_print(f"☕ Java instalado: {java_version.split()[2] if len(java_version.split()) > 2 else 'OK'}")
+        except Exception as e:
+            debug_print(f"❌ Java não encontrado: {e}")
+            
+        # Verificar se libjvm.so existe
+        possible_paths = [
+            '/usr/lib/jvm/java-11-openjdk-amd64/lib/server/libjvm.so',
+            '/usr/lib/jvm/java-11-openjdk-amd64/jre/lib/amd64/server/libjvm.so',
+            '/usr/lib/jvm/java-8-openjdk-amd64/jre/lib/amd64/server/libjvm.so',
+            '/usr/lib/jvm/default-java/lib/server/libjvm.so'
+        ]
+        
+        for path in possible_paths:
+            if os.path.exists(path):
+                debug_print(f"✅ libjvm.so encontrado: {path}")
+                break
+        else:
+            debug_print("❌ libjvm.so não encontrado em nenhum caminho")
+        
         # Verificar se o arquivo existe
         if not os.path.exists(pdf_path):
             debug_print(f"❌ Arquivo PDF não encontrado: {pdf_path}")
