@@ -7,9 +7,27 @@ from datetime import datetime
 import json
 import requests
 
-# Configurar Java para tabula-py
-os.environ['JAVA_HOME'] = '/usr/lib/jvm/java-11-openjdk-amd64'
-os.environ['PATH'] = f"/usr/lib/jvm/java-11-openjdk-amd64/bin:{os.environ.get('PATH', '')}"
+# Configurar Java para tabula-py - múltiplas tentativas
+java_paths = [
+    '/usr/lib/jvm/java-11-openjdk-amd64',
+    '/usr/lib/jvm/java-8-openjdk-amd64',
+    '/usr/lib/jvm/default-java',
+    '/usr/lib/jvm/java-11-openjdk',
+    '/usr/lib/jvm/java-8-openjdk'
+]
+
+java_home = None
+for path in java_paths:
+    if os.path.exists(path):
+        java_home = path
+        break
+
+if java_home:
+    os.environ['JAVA_HOME'] = java_home
+    os.environ['PATH'] = f"{java_home}/bin:{os.environ.get('PATH', '')}"
+    print(f"✅ Java configurado: {java_home}")
+else:
+    print("❌ Java não encontrado em nenhum caminho padrão")
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
