@@ -17,13 +17,17 @@ import requests
 
 # Configuração da API Google Gemini (gratuita e estável)
 GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
-GEMINI_API_KEY = "AIzaSyCo0mC8kOeQdiJpvu3ToG0gL6tQf0s9pns"  # Chave fornecida pelo usuário
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', 'AIzaSyCo0mC8kOeQdiJpvu3ToG0gL6tQf0s9pns')  # Chave do Vercel ou fallback
 
 AI_AVAILABLE = True
 print("✅ IA Google Gemini configurada com sucesso!")
 
-# Criar pasta de uploads se não existir
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+# Criar pasta de uploads se não existir (apenas em desenvolvimento)
+if not os.path.exists(app.config['UPLOAD_FOLDER']):
+    try:
+        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    except:
+        pass  # Em produção, pode não ter permissão para criar pastas
 
 # Termos de relevância padrão
 DEFAULT_TERMS = {
@@ -1146,6 +1150,3 @@ def download_excel(filename):
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
-
-# Para Vercel
-app = app
