@@ -42,11 +42,48 @@ CIDADES = [
     'DOUTOR ULYSSES'
 ]
 
+def convert_pdf_to_excel(pdf_path):
+    """Converte PDF para Excel usando tabula-py"""
+    try:
+        print(f"🔍 Iniciando conversão PDF para Excel: {pdf_path}")
+        
+        # Tentar extrair tabelas do PDF
+        try:
+            import tabula
+            # Extrair todas as tabelas do PDF
+            tables = tabula.read_pdf(pdf_path, pages='all', multiple_tables=True)
+            
+            if tables:
+                print(f"✅ Encontradas {len(tables)} tabelas no PDF")
+                return tables
+            else:
+                print("❌ Nenhuma tabela encontrada, tentando extração de texto")
+                return None
+                
+        except ImportError:
+            print("❌ tabula-py não disponível, usando extração de texto")
+            return None
+            
+    except Exception as e:
+        print(f"Erro na conversão PDF para Excel: {e}")
+        return None
+
 def extract_text_from_pdf(pdf_path):
     """Extrai texto do PDF e retorna as ocorrências estruturadas"""
     try:
         print(f"🔍 Iniciando extração de ocorrências do PDF: {pdf_path}")
         
+        # Primeiro tentar conversão para Excel
+        tables = convert_pdf_to_excel(pdf_path)
+        if tables:
+            print("📊 Processando tabelas extraídas...")
+            ocorrencias = process_excel_tables(tables)
+            if ocorrencias:
+                print(f"✅ Encontradas {len(ocorrencias)} ocorrências via Excel")
+                return ocorrencias
+        
+        # Fallback: extração de texto
+        print("📝 Fallback: extração de texto...")
         with open(pdf_path, 'rb') as file:
             pdf_reader = PyPDF2.PdfReader(file)
             text = ""
@@ -60,7 +97,7 @@ def extract_text_from_pdf(pdf_path):
             # Processar texto extraído
             ocorrencias = extract_from_text(text)
             if ocorrencias:
-                print(f"✅ Encontradas {len(ocorrencias)} ocorrências")
+                print(f"✅ Encontradas {len(ocorrencias)} ocorrências via texto")
                 return ocorrencias
             else:
                 print("❌ Nenhuma ocorrência encontrada no texto")
@@ -172,6 +209,109 @@ def extract_from_text(text):
             i += 1
     
     return ocorrencias
+
+def process_excel_tables(tables):
+    """Processa tabelas extraídas do PDF e retorna ocorrências estruturadas"""
+    ocorrencias = []
+    
+    try:
+        import pandas as pd
+        
+        for i, table in enumerate(tables):
+            print(f"📊 Processando tabela {i+1}/{len(tables)}")
+            
+            if table is None or table.empty:
+                continue
+                
+            # Converter para DataFrame se necessário
+            if not isinstance(table, pd.DataFrame):
+                table = pd.DataFrame(table)
+            
+            print(f"📋 Colunas da tabela: {list(table.columns)}")
+            print(f"📏 Dimensões: {table.shape}")
+            
+            # Procurar coluna com BOU
+            bou_column = None
+            for col in table.columns:
+                if any('bou' in str(col).lower() or '2025/' in str(table[col].iloc[0] if len(table) > 0 else '') for _ in [1]):
+                    bou_column = col
+                    break
+            
+            if bou_column is None:
+                # Procurar por padrão BOU na primeira coluna
+                first_col = table.columns[0]
+                for idx, row in table.iterrows():
+                    if pd.notna(row[first_col]) and '2025/' in str(row[first_col]):
+                        bou_column = first_col
+                        break
+            
+            if bou_column is None:
+                print(f"❌ Nenhuma coluna BOU encontrada na tabela {i+1}")
+                continue
+            
+            print(f"✅ Coluna BOU encontrada: {bou_column}")
+            
+            # Processar cada linha da tabela
+            for idx, row in table.iterrows():
+                bou_value = row[bou_column]
+                
+                if pd.notna(bou_value) and '2025/' in str(bou_value):
+                    # Extrair BOU
+                    bou_match = re.search(r'(2025/\d{4,7})', str(bou_value))
+                    if bou_match:
+                        bou = bou_match.group(1)
+                        
+                        # Criar ocorrência
+                        ocorrencia = {
+                            'bou': bou,
+                            'relato': '',
+                            'natureza': '',
+                            'endereco': '',
+                            'data_geracao': ''
+                        }
+                        
+                        # Extrair outros campos da linha
+                        for col in table.columns:
+                            if pd.notna(row[col]):
+                                value = str(row[col]).strip()
+                                
+                                # Identificar tipo de campo
+                                if 'natureza' in col.lower():
+                                    ocorrencia['natureza'] = value
+                                elif 'endereço' in col.lower() or 'endereco' in col.lower():
+                                    ocorrencia['endereco'] = value
+                                elif 'data' in col.lower() and 'geração' in col.lower():
+                                    ocorrencia['data_geracao'] = value
+                                elif 'relato' in col.lower():
+                                    ocorrencia['relato'] = value
+                                elif len(value) > 50 and not value.startswith('2025/'):
+                                    # Provavelmente é o relato
+                                    ocorrencia['relato'] = value
+                        
+                        # Se não encontrou relato, usar toda a linha
+                        if not ocorrencia['relato']:
+                            relato_parts = []
+                            for col in table.columns:
+                                if pd.notna(row[col]) and col != bou_column:
+                                    value = str(row[col]).strip()
+                                    if value and not value.startswith('2025/'):
+                                        relato_parts.append(value)
+                            ocorrencia['relato'] = ' '.join(relato_parts)
+                        
+                        print(f"🔍 BOU: {ocorrencia['bou']}")
+                        print(f"📋 Natureza: {ocorrencia['natureza'][:50]}..." if ocorrencia['natureza'] else "📋 Natureza: N/A")
+                        print(f"📍 Endereço: {ocorrencia['endereco'][:50]}..." if ocorrencia['endereco'] else "📍 Endereço: N/A")
+                        print(f"📅 Data: {ocorrencia['data_geracao']}" if ocorrencia['data_geracao'] else "📅 Data: N/A")
+                        print(f"📝 Relato: {ocorrencia['relato'][:100]}..." if ocorrencia['relato'] else "📝 Relato: N/A")
+                        print("---")
+                        
+                        ocorrencias.append(ocorrencia)
+        
+        return ocorrencias
+        
+    except Exception as e:
+        print(f"Erro ao processar tabelas: {e}")
+        return []
 
 def analyze_relevance(ocorrencias, terms):
     """Analisa a relevância das ocorrências baseada nos termos"""
