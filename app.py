@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify, render_template
 from werkzeug.utils import secure_filename
-import fitz  # PyMuPDF
+import PyPDF2
 import re
 import os
 from datetime import datetime
@@ -107,60 +107,25 @@ def extract_text_from_pdf(pdf_path):
     except Exception as e:
         print(f"Erro no método estruturado: {e}")
     
-    # Método 2: Tentar extração por tabelas
+    # Método 2: Tentar extração por texto simples com PyPDF2
     try:
-        doc = fitz.open(pdf_path)
-        for page_num in range(len(doc)):
-            page = doc.load_page(page_num)
+        with open(pdf_path, 'rb') as file:
+            pdf_reader = PyPDF2.PdfReader(file)
+            text = ""
             
-            # Tentar extrair tabelas primeiro
-            tables = page.find_tables()
-            if tables:
-                for table in tables:
-                    table_data = table.extract()
-                    if table_data and len(table_data) > 1:  # Tem cabeçalho e dados
-                        # Processar dados da tabela
-                        for row in table_data[1:]:  # Pular cabeçalho
-                            if len(row) >= 6:  # Verificar se tem colunas suficientes
-                                ocorrencia = {
-                                    'bou': row[0] if row[0] else '',
-                                    'relato': row[1] if row[1] else '',
-                                    'natureza': row[3] if len(row) > 3 and row[3] else '',
-                                    'endereco': row[4] if len(row) > 4 and row[4] else '',
-                                    'data_geracao': row[5] if len(row) > 5 and row[5] else ''
-                                }
-                                
-                                # Limpar e validar dados
-                                if ocorrencia['bou'] and len(ocorrencia['bou'].strip()) > 3:
-                                    # Limpar texto
-                                    for key in ocorrencia:
-                                        if ocorrencia[key]:
-                                            ocorrencia[key] = str(ocorrencia[key]).strip()
-                                    
-                                    ocorrencias.append(ocorrencia)
-        
-        doc.close()
-        if ocorrencias:
-            print(f"Método de tabelas encontrou {len(ocorrencias)} ocorrências")
-            return ocorrencias
+            for page_num in range(len(pdf_reader.pages)):
+                page = pdf_reader.pages[page_num]
+                text += page.extract_text() + "\n"
+            
+            # Processar texto extraído
+            ocorrencias = extract_from_text(text)
+            if ocorrencias:
+                print(f"Método PyPDF2 encontrou {len(ocorrencias)} ocorrências")
+                return ocorrencias
     except Exception as e:
-        print(f"Erro no método de tabelas: {e}")
+        print(f"Erro no método PyPDF2: {e}")
     
-    # Método 3: Extração por texto simples
-    try:
-        doc = fitz.open(pdf_path)
-        for page_num in range(len(doc)):
-            page = doc.load_page(page_num)
-            text = page.get_text()
-            ocorrencias.extend(extract_from_text(text))
-        
-        doc.close()
-        if ocorrencias:
-            print(f"Método de texto encontrou {len(ocorrencias)} ocorrências")
-            return ocorrencias
-    except Exception as e:
-        print(f"Erro no método de texto: {e}")
-    
+    # Método 3: Fallback - retornar lista vazia se nenhum método funcionou
     print("Nenhum método de extração funcionou adequadamente")
     return []
 
@@ -428,16 +393,82 @@ def extract_from_text(text):
     
     return ocorrencias
 
-def extract_from_structured_pdf(pdf_path):
-    """Método alternativo para extrair dados de PDFs com estrutura específica"""
-    doc = fitz.open(pdf_path)
+def extract_from_text(text):
+    """Extrai ocorrências do texto extraído do PDF"""
     ocorrencias = []
     
-    for page_num in range(len(doc)):
-        page = doc.load_page(page_num)
+    # Dividir texto em linhas
+    lines = text.split('\n')
+    
+    i = 0
+    while i < len(lines):
+        line = lines[i].strip()
         
-        # Obter texto com informações de posição
-        text_dict = page.get_text("dict")
+        # Procurar BOU
+        bou_match = re.search(r'(\d{4}/\d{4,7})', line)
+        if bou_match:
+            bou = bou_match.group(1)
+            
+            # Coletar informações da ocorrência
+            ocorrencia = {
+                'bou': bou,
+                'relato': '',
+                'natureza': '',
+                'endereco': '',
+                'data_geracao': ''
+            }
+            
+            # Coletar linhas até encontrar próximo BOU
+            j = i + 1
+            while j < len(lines):
+                next_line = lines[j].strip()
+                
+                # Verificar se é novo BOU
+                if re.search(r'(\d{4}/\d{4,7})', next_line):
+                    break
+                
+                # Procurar por padrões específicos
+                if 'NATUREZA:' in next_line or 'Natureza:' in next_line:
+                    ocorrencia['natureza'] = next_line.split(':', 1)[1].strip()
+                elif 'ENDEREÇO:' in next_line or 'Endereço:' in next_line:
+                    ocorrencia['endereco'] = next_line.split(':', 1)[1].strip()
+                elif 'DATA GERAÇÃO:' in next_line or 'Data Geração:' in next_line:
+                    ocorrencia['data_geracao'] = next_line.split(':', 1)[1].strip()
+                elif 'RELATO:' in next_line or 'Relato:' in next_line:
+                    # Coletar relato (pode ser múltiplas linhas)
+                    relato_lines = [next_line.split(':', 1)[1].strip()]
+                    k = j + 1
+                    while k < len(lines) and not re.search(r'(\d{4}/\d{4,7})', lines[k]):
+                        if lines[k].strip():
+                            relato_lines.append(lines[k].strip())
+                        k += 1
+                    ocorrencia['relato'] = ' '.join(relato_lines)
+                
+                j += 1
+            
+            ocorrencias.append(ocorrencia)
+            i = j
+        else:
+            i += 1
+    
+    return ocorrencias
+
+def extract_from_structured_pdf(pdf_path):
+    """Método alternativo para extrair dados de PDFs com estrutura específica"""
+    try:
+        with open(pdf_path, 'rb') as file:
+            pdf_reader = PyPDF2.PdfReader(file)
+            text = ""
+            
+            for page_num in range(len(pdf_reader.pages)):
+                page = pdf_reader.pages[page_num]
+                text += page.extract_text() + "\n"
+            
+            # Usar a função de extração de texto
+            return extract_from_text(text)
+    except Exception as e:
+        print(f"Erro no método estruturado: {e}")
+        return []
         
         # Procurar por blocos de texto que contenham protocolos
         for block in text_dict["blocks"]:
