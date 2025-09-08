@@ -99,7 +99,6 @@ def convert_pdf_to_excel_with_debug(pdf_path, debug_print):
         debug_print(f"☕ JAVA_HOME: {java_home}")
         
         # Verificar se o arquivo existe
-        import os
         if not os.path.exists(pdf_path):
             debug_print(f"❌ Arquivo PDF não encontrado: {pdf_path}")
             return None
