@@ -47,25 +47,42 @@ def convert_pdf_to_excel(pdf_path):
     try:
         print(f"🔍 Iniciando conversão PDF para Excel: {pdf_path}")
         
+        # Verificar se o arquivo existe
+        import os
+        if not os.path.exists(pdf_path):
+            print(f"❌ Arquivo PDF não encontrado: {pdf_path}")
+            return None
+        
         # Tentar extrair tabelas do PDF
         try:
             import tabula
+            print("📊 tabula-py disponível, tentando extrair tabelas...")
+            
             # Extrair todas as tabelas do PDF
             tables = tabula.read_pdf(pdf_path, pages='all', multiple_tables=True)
             
+            print(f"📋 Resultado da extração: {type(tables)}")
             if tables:
                 print(f"✅ Encontradas {len(tables)} tabelas no PDF")
+                for i, table in enumerate(tables):
+                    if table is not None:
+                        print(f"  Tabela {i+1}: {table.shape} - Colunas: {list(table.columns) if hasattr(table, 'columns') else 'N/A'}")
+                    else:
+                        print(f"  Tabela {i+1}: None")
                 return tables
             else:
                 print("❌ Nenhuma tabela encontrada, tentando extração de texto")
                 return None
                 
-        except ImportError:
-            print("❌ tabula-py não disponível, usando extração de texto")
+        except ImportError as ie:
+            print(f"❌ tabula-py não disponível: {ie}")
+            return None
+        except Exception as te:
+            print(f"❌ Erro na extração com tabula: {te}")
             return None
             
     except Exception as e:
-        print(f"Erro na conversão PDF para Excel: {e}")
+        print(f"❌ Erro geral na conversão PDF para Excel: {e}")
         return None
 
 def extract_text_from_pdf(pdf_path):
@@ -216,11 +233,17 @@ def process_excel_tables(tables):
     
     try:
         import pandas as pd
+        print(f"🔍 Iniciando processamento de {len(tables)} tabelas")
         
         for i, table in enumerate(tables):
             print(f"📊 Processando tabela {i+1}/{len(tables)}")
             
-            if table is None or table.empty:
+            if table is None:
+                print(f"  ❌ Tabela {i+1} é None, pulando...")
+                continue
+                
+            if hasattr(table, 'empty') and table.empty:
+                print(f"  ❌ Tabela {i+1} está vazia, pulando...")
                 continue
                 
             # Converter para DataFrame se necessário
@@ -232,21 +255,47 @@ def process_excel_tables(tables):
             
             # Procurar coluna com BOU
             bou_column = None
+            print(f"  🔍 Procurando coluna BOU...")
+            print(f"  📋 Colunas disponíveis: {list(table.columns)}")
+            
+            # Primeiro, mostrar algumas linhas da tabela para debug
+            print(f"  📊 Primeiras 3 linhas da tabela:")
+            for idx in range(min(3, len(table))):
+                row_data = {}
+                for col in table.columns:
+                    row_data[col] = str(table.iloc[idx][col])[:50] if pd.notna(table.iloc[idx][col]) else "NaN"
+                print(f"    Linha {idx}: {row_data}")
+            
             for col in table.columns:
                 if any('bou' in str(col).lower() or '2025/' in str(table[col].iloc[0] if len(table) > 0 else '') for _ in [1]):
                     bou_column = col
+                    print(f"  ✅ Coluna BOU encontrada por nome: {col}")
                     break
             
             if bou_column is None:
                 # Procurar por padrão BOU na primeira coluna
                 first_col = table.columns[0]
+                print(f"  🔍 Procurando BOU na primeira coluna: {first_col}")
                 for idx, row in table.iterrows():
                     if pd.notna(row[first_col]) and '2025/' in str(row[first_col]):
                         bou_column = first_col
+                        print(f"  ✅ Coluna BOU encontrada por conteúdo: {first_col}")
                         break
             
             if bou_column is None:
-                print(f"❌ Nenhuma coluna BOU encontrada na tabela {i+1}")
+                print(f"  ❌ Nenhuma coluna BOU encontrada na tabela {i+1}")
+                print(f"  📋 Tentando procurar em todas as colunas...")
+                for col in table.columns:
+                    for idx, row in table.iterrows():
+                        if pd.notna(row[col]) and '2025/' in str(row[col]):
+                            bou_column = col
+                            print(f"  ✅ Coluna BOU encontrada: {col}")
+                            break
+                    if bou_column:
+                        break
+                        
+            if bou_column is None:
+                print(f"  ❌ Nenhuma coluna BOU encontrada na tabela {i+1}, pulando...")
                 continue
             
             print(f"✅ Coluna BOU encontrada: {bou_column}")
