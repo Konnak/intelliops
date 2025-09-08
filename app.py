@@ -97,6 +97,8 @@ def extract_from_text(text):
             
             # Coletar linhas até encontrar próximo BOU
             j = i + 1
+            relato_lines = []
+            
             while j < len(lines):
                 next_line = lines[j].strip()
                 
@@ -114,14 +116,51 @@ def extract_from_text(text):
                 elif 'RELATO:' in next_line or 'Relato:' in next_line:
                     # Coletar relato (pode ser múltiplas linhas)
                     relato_lines = [next_line.split(':', 1)[1].strip()]
-                    k = j + 1
-                    while k < len(lines) and not re.search(r'(\d{4}/\d{4,7})', lines[k]):
-                        if lines[k].strip():
-                            relato_lines.append(lines[k].strip())
-                        k += 1
-                    ocorrencia['relato'] = ' '.join(relato_lines)
+                else:
+                    # Se não é um campo específico, pode ser parte do relato
+                    if relato_lines and next_line:
+                        relato_lines.append(next_line)
                 
                 j += 1
+            
+            # Juntar relato
+            if relato_lines:
+                ocorrencia['relato'] = ' '.join(relato_lines)
+            
+            # Se não encontrou campos específicos, tentar extrair do texto geral
+            if not ocorrencia['natureza'] or not ocorrencia['endereco']:
+                # Procurar por padrões mais gerais
+                text_block = ' '.join(lines[i:j])
+                
+                # Procurar natureza
+                if not ocorrencia['natureza']:
+                    natureza_match = re.search(r'(?:NATUREZA|Natureza)[:\s]+([^-\n]+)', text_block)
+                    if natureza_match:
+                        ocorrencia['natureza'] = natureza_match.group(1).strip()
+                
+                # Procurar endereço
+                if not ocorrencia['endereco']:
+                    endereco_match = re.search(r'(?:ENDEREÇO|Endereço)[:\s]+([^-\n]+)', text_block)
+                    if endereco_match:
+                        ocorrencia['endereco'] = endereco_match.group(1).strip()
+                
+                # Procurar data
+                if not ocorrencia['data_geracao']:
+                    data_match = re.search(r'(\d{2}/\d{2}/\d{4}\s+\d{2}:\d{2}:\d{2})', text_block)
+                    if data_match:
+                        ocorrencia['data_geracao'] = data_match.group(1)
+            
+            # Se ainda não tem relato, usar o texto geral
+            if not ocorrencia['relato']:
+                ocorrencia['relato'] = ' '.join(lines[i:j]).strip()
+            
+            # Debug: mostrar o que foi extraído
+            print(f"🔍 BOU: {ocorrencia['bou']}")
+            print(f"📋 Natureza: {ocorrencia['natureza'][:50]}..." if ocorrencia['natureza'] else "📋 Natureza: N/A")
+            print(f"📍 Endereço: {ocorrencia['endereco'][:50]}..." if ocorrencia['endereco'] else "📍 Endereço: N/A")
+            print(f"📅 Data: {ocorrencia['data_geracao']}" if ocorrencia['data_geracao'] else "📅 Data: N/A")
+            print(f"📝 Relato: {ocorrencia['relato'][:100]}..." if ocorrencia['relato'] else "📝 Relato: N/A")
+            print("---")
             
             ocorrencias.append(ocorrencia)
             i = j
